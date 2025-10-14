@@ -1,5 +1,6 @@
-import { Package, User } from "lucide-react";
+import { Package, User, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardHeaderProps {
   userName: string;
@@ -7,6 +8,8 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ userName, userRole }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
+
   return (
     <header className="border-b border-border bg-card">
       <div className="container mx-auto px-6 py-4">
@@ -22,7 +25,16 @@ export const DashboardHeader = ({ userName, userRole }: DashboardHeaderProps) =>
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate("/documentation")}
+            >
+              <BookOpen className="h-4 w-4" />
+              Dokumentace
+            </Button>
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">{userName}</p>
               <p className="text-xs text-muted-foreground">{userRole}</p>
