@@ -310,76 +310,122 @@ Response: {
             <Card className="p-6 border-border">
               <div className="flex items-center gap-2 mb-4">
                 <Server className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold text-foreground">Deployment do datacentra</h2>
+                <h2 className="text-2xl font-bold text-foreground">Docker Compose Deployment</h2>
               </div>
 
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Klonování repositáře</h3>
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <pre className="text-sm text-muted-foreground">
-{`git clone https://github.com/vase-repo/apk-manager.git
-cd apk-manager
-npm install`}
-                    </pre>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Konfigurace</h3>
-                  <p className="text-muted-foreground mb-2">
-                    Upravte soubory:
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <h3 className="text-lg font-bold mb-2 text-foreground">Architektura</h3>
+                  <p className="text-muted-foreground mb-3">
+                    APK Manager se skládá ze 3 Docker kontejnerů:
                   </p>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-3">
-                    <li><code className="bg-muted px-2 py-1 rounded text-sm">src/config/app.config.ts</code> - aplikační nastavení</li>
-                    <li><code className="bg-muted px-2 py-1 rounded text-sm">.env.local</code> - environment proměnné</li>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <li><strong>Frontend</strong> - React aplikace (port 8580)</li>
+                    <li><strong>Backend</strong> - Node.js/Express API (port 3000)</li>
+                    <li><strong>Database</strong> - PostgreSQL 16 (port 5432)</li>
                   </ul>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Build</h3>
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <pre className="text-sm text-muted-foreground">
-{`npm run build`}
-                    </pre>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Výstup bude v adresáři <code className="bg-muted px-2 py-1 rounded">dist/</code>
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Nginx konfigurace</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Klonování a konfigurace</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`server {
-    listen 443 ssl http2;
-    server_name apk-manager.vase-domena.cz;
-    
-    root /var/www/apk-manager/dist;
-    index index.html;
-    
-    # SPA routing
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # API proxy
-    location /api/ {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-    }
-}`}
+{`git clone https://github.com/Nemovitostnik-H/droid-deploy.git
+cd droid-deploy
+
+# Zkopíruj a uprav .env
+cp .env.example .env
+nano .env`}
                     </pre>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Spuštění</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Environment proměnné (.env)</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
-                    <pre className="text-sm text-muted-foreground">
-{`sudo systemctl restart nginx
-sudo systemctl enable nginx`}
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`APP_PORT=8580
+API_PORT=3000
+API_BASE_URL=http://localhost:3000/api
+APK_DATA_PATH=/home/jelly/docker/apk-manager
+
+# Databáze - ZMĚŇ HESLO!
+POSTGRES_USER=apkmanager
+POSTGRES_PASSWORD=VyberSilneHeslo123!
+POSTGRES_DB=apkmanager
+
+# JWT Secret - ZMĚŇ V PRODUKCI!
+JWT_SECRET=nahodny-dlouhy-secret-32-znaku
+
+TZ=Europe/Prague`}
+                    </pre>
+                  </div>
+                  <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded">
+                    <p className="text-sm text-destructive font-medium">
+                      ⚠️ KRITICKÉ: Změň POSTGRES_PASSWORD a JWT_SECRET v produkci!
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Vytvoření APK adresářů</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Spuštění služeb</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`# Spusť všechny kontejnery (frontend + backend + databáze)
+docker-compose up -d
+
+# Zkontroluj status
+docker-compose ps
+
+# Sleduj logy
+docker-compose logs -f`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Ověření nasazení</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`# Test backend API
+curl http://localhost:3000/health
+
+# Test databáze
+docker-compose exec postgres psql -U apkmanager -d apkmanager -c "SELECT COUNT(*) FROM users;"
+
+# První přihlášení
+# Username: admin
+# Password: admin123`}
+                    </pre>
+                  </div>
+                  <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded">
+                    <p className="text-sm text-primary font-medium">
+                      💡 Změň výchozí heslo okamžitě po prvním přihlášení!
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">Správa služeb</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`# Restart všech služeb
+docker-compose restart
+
+# Zastavení
+docker-compose down
+
+# Backup databáze
+docker-compose exec postgres pg_dump -U apkmanager apkmanager > backup.sql`}
                     </pre>
                   </div>
                 </div>

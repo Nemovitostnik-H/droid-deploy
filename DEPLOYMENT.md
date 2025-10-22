@@ -2,7 +2,14 @@
 
 ## Přehled
 
-Tato příručka vás provede procesem nasazení APK Manager aplikace do vašeho vlastního datacentra pomocí Docker kontejneru nebo klasické instalace.
+Tato příručka vás provede procesem nasazení kompletní APK Manager aplikace včetně frontendu, backendu a databáze pomocí Docker Compose.
+
+## Architektura
+
+APK Manager se skládá ze 3 Docker kontejnerů:
+- **Frontend** (`ghcr.io/nemovitostnik-h/droid-deploy:main`) - React aplikace na portu 8580
+- **Backend** (buildovaný lokálně) - Node.js/Express API na portu 3000
+- **Database** (`postgres:16-alpine`) - PostgreSQL databáze na portu 5432
 
 ## Docker Deployment (Doporučeno)
 
@@ -15,27 +22,47 @@ Portainer umožňuje nasazení přímo z GitHub repozitáře s automatickými up
 1. V Portaineru jdi na **Stacks** → **Add stack**
 2. Zvol **Repository** jako Build method
 3. Vyplň údaje:
-   - **Name**: `droid-deploy` (nebo libovolný název stacku)
+   - **Name**: `apk-manager` (nebo libovolný název stacku)
    - **Authentication**: ⚪ Vypni (repozitář je veřejný)
    - **Repository URL**: `https://github.com/Nemovitostnik-H/droid-deploy`
    - **Repository reference**: `main` (nebo jiná branch/tag)
    - **Compose path**: `docker-compose.yml`
-4. **Environment variables** (přidej podle potřeby):
-   ```
+4. **Environment variables** (⚠️ POVINNÉ):
+   ```env
    APP_PORT=8580
-   API_BASE_URL=https://api.tvoje-domena.cz/api
+   API_PORT=3000
+   API_BASE_URL=http://localhost:3000/api
    APK_DATA_PATH=/home/jelly/docker/apk-manager
+   POSTGRES_USER=apkmanager
+   POSTGRES_PASSWORD=VyberSilneHeslo123!
+   POSTGRES_DB=apkmanager
+   JWT_SECRET=nahodny-dlouhy-secret-minimalne-32-znaku-xyz123
    TZ=Europe/Prague
    ```
+   
+   **⚠️ DŮLEŽITÉ BEZPEČNOSTNÍ NASTAVENÍ:**
+   - `POSTGRES_PASSWORD` - Změň na silné heslo (min 16 znaků)
+   - `JWT_SECRET` - Změň na náhodný secret (min 32 znaků)
+   
 5. **GitOps updates** (volitelné): Zapni pro automatické updaty při změnách v Git repo
 6. Klikni **Deploy the stack**
+7. **Počkej 30-60 sekund** až se všechny kontejnery nastartují
 
 #### Jak fungují automatické updaty?
 
 Pokud zapneš **GitOps updates**:
 - Portainer pravidelně kontroluje změny v GitHub repozitáři
-- Při nové verzi automaticky stáhne image a restartuje kontejner
+- Při nové verzi automaticky stáhne image a restartuje kontejnery
 - Ideální pro CI/CD workflow - push do `main` → automatický deploy
+
+#### První přihlášení
+
+Po úspěšném nasazení se můžeš přihlásit pomocí výchozích credentials:
+
+- **Username**: `admin`
+- **Password**: `admin123`
+
+**⚠️ KRITICKÉ:** Změň heslo okamžitě po prvním přihlášení!
 
 ### Docker Compose (Manuální nasazení)
 
@@ -48,100 +75,179 @@ Pokud preferuješ manuální nasazení bez Portaineru:
 git clone https://github.com/Nemovitostnik-H/droid-deploy.git
 cd droid-deploy
 
-# 2. Zkopíruj .env.example jako .env a uprav hodnoty
+# 2. Zkopíruj .env.example jako .env a UPRAV hodnoty
 cp .env.example .env
 nano .env  # nebo vim, code, atd.
 
-# 3. Spusť aplikaci
+# 3. ⚠️ POVINNÉ: Změň v .env souboru:
+#    - POSTGRES_PASSWORD (silné heslo)
+#    - JWT_SECRET (náhodný secret min 32 znaků)
+#    - APK_DATA_PATH (cesta k tvým APK souborům)
+
+# 4. Vytvoř APK adresářovou strukturu (pokud neexistuje)
+mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
+
+# 5. Spusť všechny služby (frontend + backend + databáze)
 docker-compose up -d
 
-# 4. Zkontroluj logy
+# 6. Zkontroluj že všechny kontejnery běží
+docker-compose ps
+
+# 7. Sleduj logy
 docker-compose logs -f
+
+# 8. Počkej až databáze inicializuje (cca 10-20 sekund)
+docker-compose logs postgres | grep "database system is ready"
 ```
 
-#### Manuální pull & run (bez docker-compose)
+#### Ověření nasazení
 
 ```bash
-# Pull image
-docker pull ghcr.io/nemovitostnik-h/droid-deploy:main
+# Test backend API health
+curl http://localhost:3000/health
+# Mělo by vrátit: {"status":"ok","timestamp":"..."}
 
-# Spuštění
-docker run -d \
-  --name apk-manager \
-  -p 8580:80 \
-  -v /home/jelly/docker/apk-manager:/data/apk:ro \
-  -e VITE_API_BASE_URL=https://api.tvoje-domena.cz/api \
-  -e TZ=Europe/Prague \
-  ghcr.io/nemovitostnik-h/droid-deploy:main
+# Test databáze
+docker-compose exec postgres psql -U apkmanager -d apkmanager -c "SELECT COUNT(*) FROM users;"
+# Mělo by zobrazit 2 výchozí uživatele
+
+# Test frontendu
+curl http://localhost:8580
+# Mělo by vrátit HTML
 ```
 
-### Build vlastního Docker image
-
-Pokud chcete buildnout vlastní image:
+### Správa služeb
 
 ```bash
-# Build
-docker build -t apk-manager:latest .
+# Zastavení všech služeb
+docker-compose down
 
-# Run
-docker run -d -p 80:80 apk-manager:latest
+# Restart služeb
+docker-compose restart
+
+# Restart konkrétní služby
+docker-compose restart backend
+
+# Zobrazení logů konkrétní služby
+docker-compose logs -f backend
+
+# Přístup do databáze
+docker-compose exec postgres psql -U apkmanager -d apkmanager
+
+# Backup databáze
+docker-compose exec postgres pg_dump -U apkmanager apkmanager > backup.sql
+
+# Restore databáze
+docker-compose exec -T postgres psql -U apkmanager apkmanager < backup.sql
+```
+
+### Build vlastních Docker images
+
+Pokud chcete buildnout vlastní images:
+
+```bash
+# Build frontendu
+docker build -t apk-manager-frontend:latest .
+
+# Build backendu
+docker build -t apk-manager-backend:latest ./backend
+
+# Použití vlastních images v docker-compose.yml:
+# Změň:
+#   frontend:
+#     image: ghcr.io/nemovitostnik-h/droid-deploy:main
+# Na:
+#   frontend:
+#     image: apk-manager-frontend:latest
 ```
 
 ### GitHub Actions - Automatické buildy
 
-Po push do GitHub se automaticky vytvoří a publikuje Docker image na ghcr.io pomocí GitHub Actions workflow.
+Po push do GitHub se automaticky vytvoří a publikuje Docker image frontendu na ghcr.io pomocí GitHub Actions workflow.
 
-Image je dostupný na:
-- `ghcr.io/vase-repo/apk-manager:main` - nejnovější verze z main
-- `ghcr.io/vase-repo/apk-manager:v1.0.0` - konkrétní tagged verze
-- `ghcr.io/vase-repo/apk-manager:sha-abc123` - konkrétní commit
+Frontend image je dostupný na:
+- `ghcr.io/nemovitostnik-h/droid-deploy:main` - nejnovější verze z main
+- `ghcr.io/nemovitostnik-h/droid-deploy:v1.0.0` - konkrétní tagged verze
+
+Backend se builduje lokálně při `docker-compose up`.
 
 ### Docker konfigurace
 
-**Environment proměnné:**
-- `VITE_API_BASE_URL` - URL vašeho backend API
+**Služby a porty:**
+- `frontend` - React UI na portu **8580**
+- `backend` - Node.js API na portu **3000**
+- `postgres` - PostgreSQL databáze na portu **5432**
+
+**Kritické environment proměnné:**
+- `POSTGRES_PASSWORD` - Heslo pro databázi (⚠️ změň v produkci!)
+- `JWT_SECRET` - Secret pro JWT tokeny (⚠️ změň v produkci!)
+- `APK_DATA_PATH` - Cesta k APK souborům na hostu
+- `API_BASE_URL` - URL backendu (pro frontend)
 
 **Volumes:**
-- `/data/apk` - Přístup k APK souborům (mount jako read-only)
+- `/data/apk` - APK soubory (backend má read-write přístup)
+- `postgres-data` - Databázová data (persistentní Docker volume)
 
-**Porty:**
-- `80` - HTTP port pro webovou aplikaci
-
-**Health Check:**
-Kontejner má zabudovaný health check, který kontroluje dostupnost aplikace každých 30 sekund.
+**Health Checks:**
+Všechny kontejnery mají health checks:
+- Frontend: kontrola HTTP na `/`
+- Backend: kontrola HTTP na `/health`
+- PostgreSQL: `pg_isready` check
 
 ### Docker v produkci s Nginx Proxy
 
-Pro produkci doporučujeme použít reverse proxy (Nginx, Traefik) pro SSL:
+Pro produkci doporučujeme použít reverse proxy (Nginx) pro SSL terminaci:
 
+**nginx-proxy.conf:**
+```nginx
+server {
+    listen 80;
+    server_name apk-manager.tvoje-domena.cz;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name apk-manager.tvoje-domena.cz;
+    
+    ssl_certificate /etc/ssl/cert.pem;
+    ssl_certificate_key /etc/ssl/key.pem;
+    
+    # Frontend
+    location / {
+        proxy_pass http://frontend:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # Backend API
+    location /api/ {
+        proxy_pass http://backend:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Pak přidej Nginx do `docker-compose.yml`:
 ```yaml
-version: '3.8'
-
-services:
   nginx-proxy:
     image: nginx:alpine
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
       - ./ssl:/etc/ssl:ro
     depends_on:
-      - apk-manager
+      - frontend
+      - backend
     networks:
       - apk-network
-
-  apk-manager:
-    image: ghcr.io/vase-repo/apk-manager:main
-    restart: unless-stopped
-    networks:
-      - apk-network
-    volumes:
-      - /data/apk:/data/apk:ro
-
-networks:
-  apk-network:
-    driver: bridge
 ```
 
 ---

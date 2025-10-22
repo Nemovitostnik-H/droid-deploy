@@ -1,66 +1,89 @@
 version: "3.8"
 
 services:
-  apk-manager:
+  # Frontend - React aplikace
+  frontend:
     image: "ghcr.io/nemovitostnik-h/droid-deploy:main"
-    container_name: apk-manager
+    container_name: apk-manager-frontend
     restart: unless-stopped
-    
+    depends_on:
+      - backend
+      - postgres
     ports:
       - "${APP_PORT:-8580}:80"
-    
-    volumes:
-      # Hlavní APK adresář (read-only)
-      - ${APK_DATA_PATH:-./data/apk}:/data/apk:ro
-      
-      # Nebo můžeš mapovat jednotlivé platformy zvlášť:
-      # - ${APK_DEV_PATH:-./data/apk/development}:/data/apk/development:ro
-      # - ${APK_STAGING_PATH:-./data/apk/staging}:/data/apk/staging:ro
-      # - ${APK_RC_PATH:-./data/apk/release-candidate}:/data/apk/release-candidate:ro
-      # - ${APK_PROD_PATH:-./data/apk/production}:/data/apk/production:ro
-    
     environment:
-      # API konfigurace
       - VITE_API_BASE_URL=${API_BASE_URL:-http://localhost:3000/api}
-      
-      # Volitelné: Timezone pro správné časové značky
       - TZ=${TZ:-Europe/Prague}
-    
-    # Health check pro monitorování
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 3s
-      start_period: 5s
+      start_period: 10s
       retries: 3
-    
-    # Logging konfigurace
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    
-    # Omezení zdrojů (volitelné, upravit podle serveru)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 256M
+    networks:
+      - apk-network
 
-# Volitelně: Definice volumes pro lepší správu
-# volumes:
-#   apk-data:
-#     driver: local
-#     driver_opts:
-#       type: none
-#       o: bind
-#       device: /home/jelly/docker/apk-manager
+  # Backend - Node.js API
+  backend:
+    build: ./backend
+    container_name: apk-manager-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      # APK adresáře - backend potřebuje read-write přístup
+      - ${APK_DATA_PATH:-./data/apk}:/data/apk
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-apkmanager}:${POSTGRES_PASSWORD:-apkmanager}@postgres:5432/${POSTGRES_DB:-apkmanager}
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - JWT_EXPIRES_IN=24h
+      - CORS_ORIGIN=*
+      - APK_DIRECTORY=/data/apk/staging
+      - PLATFORM_DEV=/data/apk/development
+      - PLATFORM_RC=/data/apk/release-candidate
+      - PLATFORM_PROD=/data/apk/production
+      - TZ=${TZ:-Europe/Prague}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    networks:
+      - apk-network
 
-# Volitelně: Vlastní network
-# networks:
-#   apk-network:
-#     driver: bridge
+  # Database - PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: apk-manager-db
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-apkmanager}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-apkmanager}
+      - POSTGRES_DB=${POSTGRES_DB:-apkmanager}
+      - TZ=${TZ:-Europe/Prague}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apkmanager}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apk-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  apk-network:
+    driver: bridge
