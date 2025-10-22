@@ -101,6 +101,38 @@ export const apkApi = {
       apk: response.data
     };
   },
+
+  // Upload APK file
+  upload: async (file: File): Promise<{ success: boolean; apk: any }> => {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('apk', file);
+
+    const response = await fetch(`${API_BASE}/apk/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+      throw new Error("Authentication required");
+    }
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Failed to upload APK');
+    }
+
+    return {
+      success: true,
+      apk: data.data
+    };
+  },
 };
 
 // Publication endpoints

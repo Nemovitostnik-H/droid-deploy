@@ -4,9 +4,10 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { ApkTable } from "@/components/ApkTable";
 import { PublicationTable } from "@/components/PublicationTable";
 import { PublishDialog } from "@/components/PublishDialog";
+import { UploadDialog } from "@/components/UploadDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { apkApi, publicationApi, ApkFile, Publication } from "@/services/api";
 
@@ -32,14 +33,16 @@ interface PublicationTableItem {
 }
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const [selectedApk, setSelectedApk] = useState<ApkTableItem | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [apkFiles, setApkFiles] = useState<ApkTableItem[]>([]);
   const [publications, setPublications] = useState<PublicationTableItem[]>([]);
   const [isLoadingApks, setIsLoadingApks] = useState(false);
   const [isLoadingPublications, setIsLoadingPublications] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Load APKs
   const loadApks = async () => {
@@ -154,6 +157,26 @@ const Index = () => {
     }
   };
 
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const response = await apkApi.upload(file);
+      if (response.success) {
+        toast.success("APK nahrán", {
+          description: `${file.name} byl úspěšně nahrán`,
+        });
+        setUploadDialogOpen(false);
+        await loadApks();
+      }
+    } catch (error: any) {
+      toast.error("Chyba při nahrávání", {
+        description: error.message,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader />
@@ -177,15 +200,27 @@ const Index = () => {
                   Přehled všech APK souborů ve sledovaném adresáři
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleScan}
-                disabled={isScanning}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-                Obnovit
-              </Button>
+              <div className="flex gap-2">
+                {hasRole(['admin']) && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setUploadDialogOpen(true)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Nahrát APK
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleScan}
+                  disabled={isScanning}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                  Obnovit
+                </Button>
+              </div>
             </div>
             <ApkTable apkFiles={apkFiles} onPublish={handlePublish} />
           </TabsContent>
@@ -218,6 +253,13 @@ const Index = () => {
         open={publishDialogOpen}
         onOpenChange={setPublishDialogOpen}
         onConfirm={handleConfirmPublish}
+      />
+
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onUpload={handleUpload}
+        isUploading={isUploading}
       />
     </div>
   );
