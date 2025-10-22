@@ -112,10 +112,20 @@ const Index = () => {
     }
   };
 
-  // Initial load
+  // Initial load and auto-refresh
   useEffect(() => {
+    // Load data immediately
     loadApks();
     loadPublications();
+
+    // Set up auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      loadApks();
+      loadPublications();
+    }, 60000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, []);
 
   const handlePublish = (apk: ApkTableItem) => {
