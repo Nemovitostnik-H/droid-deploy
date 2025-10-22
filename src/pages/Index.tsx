@@ -5,7 +5,7 @@ import { PublicationTable } from "@/components/PublicationTable";
 import { PublishDialog } from "@/components/PublishDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Scan } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { apkApi, publicationApi, ApkFile, Publication } from "@/services/api";
 
@@ -180,26 +180,15 @@ const Index = () => {
                   Přehled všech APK souborů ve sledovaném adresáři
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadApks}
-                  disabled={isLoadingApks}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingApks ? 'animate-spin' : ''}`} />
-                  Obnovit
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleScan}
-                  disabled={isScanning}
-                >
-                  <Scan className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
-                  Skenovat adresář
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleScan}
+                disabled={isScanning}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                Obnovit
+              </Button>
             </div>
             <ApkTable apkFiles={apkFiles} onPublish={handlePublish} />
           </TabsContent>
