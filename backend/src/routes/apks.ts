@@ -117,8 +117,13 @@ router.post('/scan', authenticateToken, async (req, res) => {
       const filePath = path.join(APK_DIRECTORY, filename);
       const stats = await fs.stat(filePath);
       
-      // Parse filename (assuming format: AppName-v1.2.3-build123.apk)
-      const match = filename.match(/^(.+?)-v?(\d+\.\d+\.\d+)(?:-build(\d+))?\.apk$/i);
+      // Parse filename - support multiple formats:
+      // 1. AppName-v1.2.3-build123.apk
+      // 2. AppName_1.2.3_build123.apk  
+      // 3. AppName_1.2.3.apk
+      const match1 = filename.match(/^(.+?)-v?(\d+\.\d+\.\d+)(?:-build(\d+))?\.apk$/i);
+      const match2 = filename.match(/^(.+?)_(\d+\.\d+\.\d+)(?:_build(\d+)|_(.+?))?\.apk$/i);
+      const match3 = filename.match(/^(.+?)_(\d+)\.(\d+)\.(\d+)(?:_(.+?))?\.apk$/i);
 
       // Fallback: accept any .apk if pattern doesn't match
       let name: string;
@@ -126,12 +131,29 @@ router.post('/scan', authenticateToken, async (req, res) => {
       let build: string | null;
       let versionCode: number;
 
-      if (match) {
-        name = match[1];
-        version = match[2];
-        build = match[3] ?? null;
-        versionCode = parseInt(match[3] || '0');
+      if (match1) {
+        // Format: AppName-v1.2.3-build123.apk
+        name = match1[1];
+        version = match1[2];
+        build = match1[3] ?? null;
+        versionCode = parseInt(match1[3] || '0');
+      } else if (match2) {
+        // Format: AppName_1.2.3_build123.apk or AppName_1.2.3_ExtraInfo.apk
+        name = match2[1];
+        version = match2[2];
+        build = match2[3] ?? null;
+        // Extract version code from version (e.g., 20.42.40 -> 204240)
+        const versionParts = version.split('.').map(Number);
+        versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2];
+      } else if (match3) {
+        // Format: AppName_20.42.40_ExtraInfo.apk (separated version parts)
+        name = match3[1];
+        version = `${match3[2]}.${match3[3]}.${match3[4]}`;
+        build = match3[5] ?? null;
+        const versionParts = [parseInt(match3[2]), parseInt(match3[3]), parseInt(match3[4])];
+        versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2];
       } else {
+        // Fallback: couldn't parse version
         name = filename.replace(/\.apk$/i, '');
         version = '0.0.0';
         build = null;
@@ -200,25 +222,47 @@ router.post('/upload', authenticateToken, upload.single('apk'), async (req, res)
     const filePath = req.file.path;
     const fileSize = req.file.size;
 
-    // Parse filename (assuming format: AppName-v1.2.3-build123.apk)
-    const match = filename.match(/^(.+?)-v?(\d+\.\d+\.\d+)(?:-build(\d+))?\.apk$/i);
+      // Parse filename - support multiple formats:
+      // 1. AppName-v1.2.3-build123.apk
+      // 2. AppName_1.2.3_build123.apk  
+      // 3. AppName_1.2.3.apk
+      const match1 = filename.match(/^(.+?)-v?(\d+\.\d+\.\d+)(?:-build(\d+))?\.apk$/i);
+      const match2 = filename.match(/^(.+?)_(\d+\.\d+\.\d+)(?:_build(\d+)|_(.+?))?\.apk$/i);
+      const match3 = filename.match(/^(.+?)_(\d+)\.(\d+)\.(\d+)(?:_(.+?))?\.apk$/i);
 
-    let name: string;
-    let version: string;
-    let build: string | null;
-    let versionCode: number;
+      let name: string;
+      let version: string;
+      let build: string | null;
+      let versionCode: number;
 
-    if (match) {
-      name = match[1];
-      version = match[2];
-      build = match[3] ?? null;
-      versionCode = parseInt(match[3] || '0');
-    } else {
-      name = filename.replace(/\.apk$/i, '');
-      version = '0.0.0';
-      build = null;
-      versionCode = 0;
-    }
+      if (match1) {
+        // Format: AppName-v1.2.3-build123.apk
+        name = match1[1];
+        version = match1[2];
+        build = match1[3] ?? null;
+        versionCode = parseInt(match1[3] || '0');
+      } else if (match2) {
+        // Format: AppName_1.2.3_build123.apk or AppName_1.2.3_ExtraInfo.apk
+        name = match2[1];
+        version = match2[2];
+        build = match2[3] ?? null;
+        // Extract version code from version (e.g., 20.42.40 -> 204240)
+        const versionParts = version.split('.').map(Number);
+        versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2];
+      } else if (match3) {
+        // Format: AppName_20.42.40_ExtraInfo.apk (separated version parts)
+        name = match3[1];
+        version = `${match3[2]}.${match3[3]}.${match3[4]}`;
+        build = match3[5] ?? null;
+        const versionParts = [parseInt(match3[2]), parseInt(match3[3]), parseInt(match3[4])];
+        versionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2];
+      } else {
+        // Fallback: couldn't parse version
+        name = filename.replace(/\.apk$/i, '');
+        version = '0.0.0';
+        build = null;
+        versionCode = 0;
+      }
 
     try {
       const result = await pool.query(
