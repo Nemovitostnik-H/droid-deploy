@@ -50,14 +50,14 @@ const Index = () => {
     try {
       const response = await apkApi.list();
       if (response.success) {
-        const mapped = response.apks.map((apk: ApkFile) => ({
-          id: apk.id.toString(),
-          name: apk.name,
-          version: apk.version,
-          build: apk.version_code.toString(),
-          date: new Date(apk.created_at).toLocaleString('cs-CZ'),
-          size: `${(apk.file_size / 1024 / 1024).toFixed(1)} MB`,
-        }));
+      const mapped = response.apks.map((apk: ApkFile) => ({
+        id: apk.id,
+        name: apk.name,
+        version: apk.version,
+        build: apk.version_code.toString(),
+        date: new Date(apk.created_at).toLocaleString('cs-CZ'),
+        size: `${(apk.file_size / 1024 / 1024).toFixed(1)} MB`,
+      }));
         setApkFiles(mapped);
       }
     } catch (error: any) {
@@ -75,17 +75,17 @@ const Index = () => {
     try {
       const response = await publicationApi.list();
       if (response.success) {
-        const mapped = response.publications.map((pub: Publication) => ({
-          id: pub.id.toString(),
-          apkName: pub.apk_name || 'Unknown',
-          version: pub.version || 'N/A',
-          platform: pub.platform,
-          status: pub.status,
-          requestedBy: pub.requested_by_name || `User #${pub.requested_by}`,
-          requestedAt: new Date(pub.requested_at).toLocaleString('cs-CZ'),
-          publishedBy: pub.published_at ? 'Systém' : undefined,
-          publishedAt: pub.published_at ? new Date(pub.published_at).toLocaleString('cs-CZ') : undefined,
-        }));
+      const mapped = response.publications.map((pub: Publication) => ({
+        id: pub.id,
+        apkName: pub.apk_name || 'Unknown',
+        version: pub.version || 'N/A',
+        platform: pub.platform,
+        status: pub.status,
+        requestedBy: pub.requested_by_name || `User #${pub.requested_by}`,
+        requestedAt: new Date(pub.requested_at).toLocaleString('cs-CZ'),
+        publishedBy: pub.published_at ? 'Systém' : undefined,
+        publishedAt: pub.published_at ? new Date(pub.published_at).toLocaleString('cs-CZ') : undefined,
+      }));
         setPublications(mapped);
       }
     } catch (error: any) {
@@ -149,7 +149,7 @@ const Index = () => {
     if (!selectedApk) return;
 
     try {
-      const response = await publicationApi.create(parseInt(selectedApk.id), platform);
+      const response = await publicationApi.create(selectedApk.id, platform);
       if (response.success) {
         toast.success("Publikace zadána", {
           description: `${selectedApk.name} v${selectedApk.version} bude publikováno na ${platform}`,

@@ -1,26 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Book, Server, Settings, Shield, FileCode, Database } from "lucide-react";
+import { DashboardHeader } from "@/components/DashboardHeader";
+import { Server, Settings, FileCode, Database, Shield } from "lucide-react";
 
 const Documentation = () => {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Book className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Dokumentace</h1>
-              <p className="text-muted-foreground">
-                Kompletní příručka pro konfiguraci a deployment APK Manageru
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader />
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="overview" className="space-y-6">

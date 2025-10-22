@@ -3,7 +3,7 @@ import { appConfig } from "@/config/app.config";
 const API_BASE = appConfig.api.baseUrl;
 
 export interface ApkFile {
-  id: number;
+  id: string;
   name: string;
   package_name: string;
   version: string;
@@ -16,11 +16,11 @@ export interface ApkFile {
 }
 
 export interface Publication {
-  id: number;
-  apk_id: number;
+  id: string;
+  apk_id: string;
   platform: 'development' | 'release_candidate' | 'production';
   status: 'pending' | 'published' | 'failed';
-  requested_by: number;
+  requested_by: string;
   requested_by_name?: string;
   requested_at: string;
   published_at?: string;
@@ -102,7 +102,7 @@ export const apkApi = {
   },
 
   // Get APK metadata
-  metadata: async (id: number): Promise<{ success: boolean; apk: ApkFile }> => {
+  metadata: async (id: string): Promise<{ success: boolean; apk: ApkFile }> => {
     const response = await fetchWithAuth(`${API_BASE}/apk/metadata/${id}`);
     return {
       success: response.success,
@@ -147,10 +147,10 @@ export const apkApi = {
 // Publication endpoints
 export const publicationApi = {
   // Create new publication
-  create: async (apkId: number, platform: string): Promise<{ success: boolean; publication: Publication }> => {
+  create: async (apkId: string, platform: string): Promise<{ success: boolean; publication: Publication }> => {
     const response = await fetchWithAuth(`${API_BASE}/publications/create`, {
       method: 'POST',
-      body: JSON.stringify({ apk_id: apkId, platform }),
+      body: JSON.stringify({ apkId, platform }),
     });
     return {
       success: response.success,
@@ -168,7 +168,7 @@ export const publicationApi = {
   },
 
   // Get publication status
-  status: async (id: number): Promise<{ success: boolean; publication: Publication }> => {
+  status: async (id: string): Promise<{ success: boolean; publication: Publication }> => {
     const response = await fetchWithAuth(`${API_BASE}/publications/${id}/status`);
     return {
       success: response.success,
