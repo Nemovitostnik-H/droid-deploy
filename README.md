@@ -4,11 +4,11 @@
 
 ## 🏗️ Architektura
 
-APK Manager je full-stack aplikace postavená na Docker Compose s těmito službami:
+APK Manager je plně dockerizovaná aplikace - **žádné buildování, žádné klonování**. Vše běží z předpřipravených Docker images.
 
-- **Frontend** (React + TypeScript) - Moderní UI pro správu APK souborů
-- **Backend API** (Node.js + Express) - RESTful API pro business logiku
-- **Database** (PostgreSQL 16) - Persistence dat (uživatelé, APK metadata, publikace)
+- **Frontend** (React + TypeScript) - `ghcr.io/nemovitostnik-h/droid-deploy:main`
+- **Backend API** (Node.js + Express) - `ghcr.io/nemovitostnik-h/droid-deploy-backend:main`
+- **Database** (PostgreSQL 16) - `postgres:16-alpine`
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌──────────────┐
@@ -23,35 +23,39 @@ APK Manager je full-stack aplikace postavená na Docker Compose s těmito služb
                      └──────────────┘
 ```
 
-## 🚀 Rychlý start
+## 🚀 Rychlý start (Dockge)
 
 ### Požadavky
 
 - Docker Engine 24.0+
-- Docker Compose 2.0+
+- Dockge nebo Portainer (doporučeno)
 - 2GB+ volného RAM
-- Přístup k adresáři pro APK soubory
 
-### Instalace (3 kroky)
+### Instalace (4 kroky)
 
 ```bash
-# 1. Klonuj repozitář
-git clone https://github.com/Nemovitostnik-H/droid-deploy.git
-cd droid-deploy
+# 1. Vytvoř APK adresáře
+mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
 
-# 2. Nastav environment variables
-cp .env.example .env
-nano .env  # ZMĚŇ: POSTGRES_PASSWORD, JWT_SECRET, APK_DATA_PATH
+# 2. V Dockge vytvoř nový stack "apk-manager"
+# Zkopíruj docker-compose.yml z tohoto repo
 
-# 3. Spusť aplikaci
-docker-compose up -d
+# 3. Nastav environment variables v Dockge:
+APP_PORT=8580
+API_BASE_URL=http://your-server-ip:3000/api
+POSTGRES_PASSWORD=ZMĚŇ-NA-SILNÉ-HESLO
+JWT_SECRET=ZMĚŇ-NA-NÁHODNÝ-SECRET-32-ZNAKŮ
+APK_DATA_PATH=/home/jelly/docker/apk-manager
+
+# 4. Deploy v Dockge a inicializuj databázi:
+wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/backend/src/db/schema.sql
+docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
 ```
 
 ### První přihlášení
 
-Aplikace vytvoří výchozí admin účet:
+Otevři v prohlížeči: `http://your-server-ip:8580`
 
-- **URL**: `http://localhost:8580`
 - **Username**: `admin`
 - **Password**: `admin123`
 

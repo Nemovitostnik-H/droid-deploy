@@ -310,101 +310,102 @@ Response: {
             <Card className="p-6 border-border">
               <div className="flex items-center gap-2 mb-4">
                 <Server className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold text-foreground">Docker Compose Deployment</h2>
+                <h2 className="text-2xl font-bold text-foreground">Dockge Deployment</h2>
               </div>
 
               <div className="space-y-6">
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
                   <h3 className="text-lg font-bold mb-2 text-foreground">Architektura</h3>
                   <p className="text-muted-foreground mb-3">
-                    APK Manager se skládá ze 3 Docker kontejnerů:
+                    APK Manager běží z předpřipravených Docker images - žádné buildování, žádné klonování:
                   </p>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                    <li><strong>Frontend</strong> - React aplikace (port 8580)</li>
-                    <li><strong>Backend</strong> - Node.js/Express API (port 3000)</li>
-                    <li><strong>Database</strong> - PostgreSQL 16 (port 5432)</li>
+                    <li><strong>Frontend</strong> - ghcr.io/nemovitostnik-h/droid-deploy:main (port 8580)</li>
+                    <li><strong>Backend</strong> - ghcr.io/nemovitostnik-h/droid-deploy-backend:main (port 3000)</li>
+                    <li><strong>Database</strong> - postgres:16-alpine (port 5432)</li>
                   </ul>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Klonování a konfigurace</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Vytvoř APK adresáře</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`git clone https://github.com/Nemovitostnik-H/droid-deploy.git
-cd droid-deploy
-
-# Zkopíruj a uprav .env
-cp .env.example .env
-nano .env`}
+{`mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
+chmod -R 755 /home/jelly/docker/apk-manager`}
                     </pre>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Environment proměnné (.env)</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Vytvoř stack v Dockge</h3>
+                  <p className="text-muted-foreground mb-2">
+                    V Dockge rozhraní klikni na <strong>+ New</strong>, pojmenuj stack <strong>apk-manager</strong>
+                    a zkopíruj docker-compose.yml z GitHub repozitáře.
+                  </p>
+                  <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded">
+                    <p className="text-sm text-primary font-medium">
+                      💡 Compose soubor: github.com/Nemovitostnik-H/droid-deploy/docker-compose.yml
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Environment proměnné v Dockge</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
 {`APP_PORT=8580
 API_PORT=3000
-API_BASE_URL=http://localhost:3000/api
+API_BASE_URL=http://your-server-ip:3000/api
 APK_DATA_PATH=/home/jelly/docker/apk-manager
 
 # Databáze - ZMĚŇ HESLO!
 POSTGRES_USER=apkmanager
-POSTGRES_PASSWORD=VyberSilneHeslo123!
+POSTGRES_PASSWORD=ZMĚŇ-NA-SILNÉ-HESLO
 POSTGRES_DB=apkmanager
 
 # JWT Secret - ZMĚŇ V PRODUKCI!
-JWT_SECRET=nahodny-dlouhy-secret-32-znaku
+JWT_SECRET=ZMĚŇ-NA-NÁHODNÝ-SECRET-32-ZNAKŮ
 
 TZ=Europe/Prague`}
                     </pre>
                   </div>
                   <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded">
                     <p className="text-sm text-destructive font-medium">
-                      ⚠️ KRITICKÉ: Změň POSTGRES_PASSWORD a JWT_SECRET v produkci!
+                      ⚠️ KRITICKÉ: Změň POSTGRES_PASSWORD a JWT_SECRET! Změň your-server-ip na IP tvého serveru!
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Vytvoření APK adresářů</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Deploy v Dockge</h3>
+                  <p className="text-muted-foreground mb-2">
+                    Klikni na <strong>Deploy</strong> a počkej 30-60 sekund.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Inicializuj databázi (DŮLEŽITÉ!)</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}`}
+{`# Stáhni schema
+wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/backend/src/db/schema.sql
+
+# Inicializuj databázi
+docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
+
+# Ověř tabulky
+docker exec apk-manager-db psql -U apkmanager -d apkmanager -c "\\dt"`}
                     </pre>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Spuštění služeb</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">6. První přihlášení</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`# Spusť všechny kontejnery (frontend + backend + databáze)
-docker-compose up -d
-
-# Zkontroluj status
-docker-compose ps
-
-# Sleduj logy
-docker-compose logs -f`}
-                    </pre>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Ověření nasazení</h3>
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`# Test backend API
-curl http://localhost:3000/health
-
-# Test databáze
-docker-compose exec postgres psql -U apkmanager -d apkmanager -c "SELECT COUNT(*) FROM users;"
-
-# První přihlášení
-# Username: admin
-# Password: admin123`}
+{`URL: http://your-server-ip:8580
+Username: admin
+Password: admin123`}
                     </pre>
                   </div>
                   <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded">
@@ -415,17 +416,16 @@ docker-compose exec postgres psql -U apkmanager -d apkmanager -c "SELECT COUNT(*
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">Správa služeb</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">Správa služeb (v Dockge)</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`# Restart všech služeb
-docker-compose restart
+{`# Update na novou verzi - v Dockge:
+# 1. Klikni na stack apk-manager
+# 2. Klikni na Pull (stáhne nové images)
+# 3. Klikni na Restart
 
-# Zastavení
-docker-compose down
-
-# Backup databáze
-docker-compose exec postgres pg_dump -U apkmanager apkmanager > backup.sql`}
+# Backup databáze (CLI)
+docker exec apk-manager-db pg_dump -U apkmanager apkmanager > backup.sql`}
                     </pre>
                   </div>
                 </div>
