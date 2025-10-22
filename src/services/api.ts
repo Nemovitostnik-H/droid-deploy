@@ -4,14 +4,13 @@ const API_BASE = appConfig.api.baseUrl;
 
 export interface ApkFile {
   id: number;
+  name: string;
   package_name: string;
-  version_name: string;
+  version: string;
   version_code: number;
-  file_name: string;
+  build?: string;
   file_path: string;
   file_size: number;
-  min_sdk_version?: number;
-  target_sdk_version?: number;
   created_at: string;
   exists?: boolean;
 }
@@ -72,19 +71,35 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 export const apkApi = {
   // Scan APK directory
   scan: async (): Promise<{ success: boolean; scanned: number; added: number; skipped: number }> => {
-    return fetchWithAuth(`${API_BASE}/apk/scan`, {
+    const response = await fetchWithAuth(`${API_BASE}/apk/scan`, {
       method: 'POST',
     });
+    // Backend returns data.total, data.added, data.skipped
+    return {
+      success: response.success,
+      scanned: response.data.total,
+      added: response.data.added,
+      skipped: response.data.skipped
+    };
   },
 
   // List all APKs
   list: async (): Promise<{ success: boolean; apks: ApkFile[] }> => {
-    return fetchWithAuth(`${API_BASE}/apk/list`);
+    const response = await fetchWithAuth(`${API_BASE}/apk/list`);
+    // Backend returns data array
+    return {
+      success: response.success,
+      apks: response.data
+    };
   },
 
   // Get APK metadata
   metadata: async (id: number): Promise<{ success: boolean; apk: ApkFile }> => {
-    return fetchWithAuth(`${API_BASE}/apk/metadata/${id}`);
+    const response = await fetchWithAuth(`${API_BASE}/apk/metadata/${id}`);
+    return {
+      success: response.success,
+      apk: response.data
+    };
   },
 };
 
@@ -92,19 +107,31 @@ export const apkApi = {
 export const publicationApi = {
   // Create new publication
   create: async (apkId: number, platform: string): Promise<{ success: boolean; publication: Publication }> => {
-    return fetchWithAuth(`${API_BASE}/publications/create`, {
+    const response = await fetchWithAuth(`${API_BASE}/publications/create`, {
       method: 'POST',
       body: JSON.stringify({ apk_id: apkId, platform }),
     });
+    return {
+      success: response.success,
+      publication: response.data
+    };
   },
 
   // List all publications
   list: async (): Promise<{ success: boolean; publications: Publication[] }> => {
-    return fetchWithAuth(`${API_BASE}/publications/list`);
+    const response = await fetchWithAuth(`${API_BASE}/publications/list`);
+    return {
+      success: response.success,
+      publications: response.data
+    };
   },
 
   // Get publication status
   status: async (id: number): Promise<{ success: boolean; publication: Publication }> => {
-    return fetchWithAuth(`${API_BASE}/publications/${id}/status`);
+    const response = await fetchWithAuth(`${API_BASE}/publications/${id}/status`);
+    return {
+      success: response.success,
+      publication: response.data
+    };
   },
 };

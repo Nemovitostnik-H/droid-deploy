@@ -47,8 +47,8 @@ const Index = () => {
       if (response.success) {
         const mapped = response.apks.map((apk: ApkFile) => ({
           id: apk.id.toString(),
-          name: apk.package_name,
-          version: apk.version_name,
+          name: apk.name,
+          version: apk.version,
           build: apk.version_code.toString(),
           date: new Date(apk.created_at).toLocaleString('cs-CZ'),
           size: `${(apk.file_size / 1024 / 1024).toFixed(1)} MB`,
