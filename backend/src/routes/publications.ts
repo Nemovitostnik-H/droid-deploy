@@ -75,6 +75,13 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     const apk = apkResult.rows[0];
 
+    console.log('[Publications] Creating publication:', {
+      apkId,
+      platform,
+      userId,
+      apkFilePath: apk.file_path
+    });
+
     // Create publication record
     const pubResult = await pool.query(
       `INSERT INTO publications (apk_id, user_id, platform, status)
@@ -88,12 +95,38 @@ router.post('/create', authenticateToken, async (req, res) => {
     // Copy APK file to target platform directory
     try {
       const targetDir = PLATFORM_PATHS[platform];
+      console.log('[Publications] Target directory:', targetDir);
+      
+      // Check if source file exists
+      try {
+        await fs.access(apk.file_path);
+      } catch (error) {
+        const errorMsg = `Source APK file not found: ${apk.file_path}`;
+        console.error('[Publications] Error:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      // Create target directory if it doesn't exist
       await fs.mkdir(targetDir, { recursive: true });
+      console.log('[Publications] Target directory created/verified');
       
       const filename = path.basename(apk.file_path);
       const targetPath = path.join(targetDir, filename);
       
+      console.log('[Publications] Copying file:', {
+        from: apk.file_path,
+        to: targetPath
+      });
+      
       await fs.copyFile(apk.file_path, targetPath);
+      console.log('[Publications] File copied successfully');
+      
+      // Verify the copy was successful
+      try {
+        await fs.access(targetPath);
+      } catch (error) {
+        throw new Error(`Failed to verify copied file at: ${targetPath}`);
+      }
       
       // Update publication status
       await pool.query(
@@ -103,6 +136,8 @@ router.post('/create', authenticateToken, async (req, res) => {
         [publication.id]
       );
 
+      console.log('[Publications] Publication successful:', publication.id);
+
       res.json({
         success: true,
         data: {
@@ -111,18 +146,27 @@ router.post('/create', authenticateToken, async (req, res) => {
           targetPath
         }
       });
-    } catch (error) {
-      console.error('Error copying APK:', error);
+    } catch (error: any) {
+      const errorMessage = error.message || 'Unknown error during copy';
+      console.error('[Publications] Error copying APK:', {
+        error: errorMessage,
+        stack: error.stack,
+        apkPath: apk.file_path,
+        platform,
+        targetDir: PLATFORM_PATHS[platform]
+      });
       
-      // Update publication status to failed
+      // Update publication status to failed with error message
       await pool.query(
-        `UPDATE publications SET status = 'failed' WHERE id = $1`,
-        [publication.id]
+        `UPDATE publications 
+         SET status = 'failed', error_message = $2 
+         WHERE id = $1`,
+        [publication.id, errorMessage]
       );
 
       res.status(500).json({
         success: false,
-        error: 'Failed to copy APK file'
+        error: `Failed to copy APK file: ${errorMessage}`
       });
     }
   } catch (error) {
