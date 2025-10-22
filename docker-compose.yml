@@ -12,7 +12,7 @@ services:
     ports:
       - "${APP_PORT:-8580}:80"
     environment:
-      - VITE_API_BASE_URL=${API_BASE_URL:-http://apk-manager-backend:3000/api}
+      - VITE_API_BASE_URL=/api
       - TZ=${TZ:-Europe/Prague}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
