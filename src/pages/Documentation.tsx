@@ -317,11 +317,11 @@ Response: {
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
                   <h3 className="text-lg font-bold mb-2 text-foreground">Architektura</h3>
                   <p className="text-muted-foreground mb-3">
-                    APK Manager běží z předpřipravených Docker images - žádné buildování, žádné klonování:
+                    APK Manager běží z Docker images - frontend předpřipravený, backend buildovaný z GitHub:
                   </p>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
                     <li><strong>Frontend</strong> - ghcr.io/nemovitostnik-h/droid-deploy:main (port 8580)</li>
-                    <li><strong>Backend</strong> - ghcr.io/nemovitostnik-h/droid-deploy-backend:main (port 3000)</li>
+                    <li><strong>Backend</strong> - builduje se z GitHub repo (port 3000)</li>
                     <li><strong>Database</strong> - postgres:16-alpine (port 5432)</li>
                   </ul>
                 </div>
@@ -378,9 +378,16 @@ TZ=Europe/Prague`}
 
                 <div>
                   <h3 className="text-lg font-bold mb-2 text-foreground">4. Deploy v Dockge</h3>
-                  <p className="text-muted-foreground mb-2">
-                    Klikni na <strong>Deploy</strong> a počkej 30-60 sekund.
-                  </p>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                    <li>Klikni na <strong>Deploy</strong> v Dockge</li>
+                    <li>Backend se zbuilduje z GitHub repozitáře (3-5 minut)</li>
+                    <li>První spuštění může celkem trvat 5-10 minut</li>
+                  </ul>
+                  <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded">
+                    <p className="text-sm text-primary font-medium">
+                      💡 Backend se builduje on-the-fly přímo z GitHub repozitáře, není potřeba žádné lokální klonování.
+                    </p>
+                  </div>
                 </div>
 
                 <div>
