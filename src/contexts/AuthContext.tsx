@@ -47,10 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      let data: any = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try { data = await response.json(); } catch {}
+      } else {
+        const text = await response.text();
+        data = text ? { success: false, error: text } : null;
+      }
 
-      if (!response.ok || !data.success) {
-        return { success: false, error: data.error || 'Přihlášení selhalo' };
+      if (!response.ok || !data?.success) {
+        const message = data?.error || `Server vrátil chybu ${response.status}`;
+        return { success: false, error: message };
       }
 
       const { token: newToken, user: newUser } = data.data;
