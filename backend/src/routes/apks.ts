@@ -88,20 +88,39 @@ router.post('/scan', authenticateToken, async (req, res) => {
       
       // Parse filename (assuming format: AppName-v1.2.3-build123.apk)
       const match = filename.match(/^(.+?)-v?(\d+\.\d+\.\d+)(?:-build(\d+))?\.apk$/i);
-      
-      if (!match) {
-        skipped++;
-        continue;
-      }
 
-      const [, name, version, build] = match;
+      // Fallback: accept any .apk if pattern doesn't match
+      let name: string;
+      let version: string;
+      let build: string | null;
+      let versionCode: number;
+
+      if (match) {
+        name = match[1];
+        version = match[2];
+        build = match[3] ?? null;
+        versionCode = parseInt(match[3] || '0');
+      } else {
+        name = filename.replace(/\.apk$/i, '');
+        version = '0.0.0';
+        build = null;
+        versionCode = 0;
+      }
       
       try {
         await pool.query(
           `INSERT INTO apk_files (name, package_name, version, version_code, build, file_path, file_size)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (package_name, version_code) DO NOTHING`,
-          [name, name.toLowerCase().replace(/\s+/g, '.'), version, parseInt(build || '0'), build || null, filePath, stats.size]
+          [
+            name,
+            name.toLowerCase().replace(/\s+/g, '.'),
+            version,
+            versionCode,
+            build,
+            filePath,
+            stats.size
+          ]
         );
         added++;
       } catch (err) {
