@@ -200,7 +200,7 @@ Klikni na **Deploy** v Dockge.
 
 Dockge stáhne všechny potřebné Docker images a spustí kontejnery. První spuštění trvá cca 1-2 minuty.
 
-### Krok 7: První přihlášení
+### Krok 6: První přihlášení
 
 Otevři v prohlížeči: `http://your-server-ip:8580`
 
