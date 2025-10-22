@@ -7,6 +7,7 @@ import apksRouter from './routes/apks';
 import publicationsRouter from './routes/publications';
 import authRouter from './routes/auth';
 import settingsRouter from './routes/settings';
+import { initDatabase } from './db/init';
 
 dotenv.config();
 
@@ -61,7 +62,15 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 APK Manager Backend running on port ${PORT}`);
-  console.log(`📁 APK Directory: ${process.env.APK_DIRECTORY || '/data/apk'}`);
-});
+// Initialize database and start server
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 APK Manager Backend running on port ${PORT}`);
+      console.log(`📁 APK Directory: ${process.env.APK_DIRECTORY || '/data/apk'}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to initialize database:', error);
+    process.exit(1);
+  });
