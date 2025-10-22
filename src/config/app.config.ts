@@ -55,26 +55,10 @@ export const appConfig = {
     },
   },
 
-  // Nastavení souborového systému
-  storage: {
-    // Cesta ke sledovanému adresáři s APK soubory
-    apkDirectory: process.env.APK_DIRECTORY || "/data/apk/staging",
-    
-    // Cesty k publikačním platformám
-    platforms: {
-      development: process.env.PLATFORM_DEV || "/data/apk/development",
-      release_candidate: process.env.PLATFORM_RC || "/data/apk/release-candidate",
-      production: process.env.PLATFORM_PROD || "/data/apk/production",
-    },
-    
-    // Maximální velikost APK souboru (v MB)
-    maxApkSize: 200,
-  },
-
-  // Nastavení kontroly publikací
+  // Nastavení kontroly publikací (frontend)
   publication: {
     // Interval kontroly statusu publikací (v sekundách)
-    checkInterval: parseInt(process.env.CHECK_INTERVAL || "60"),
+    checkInterval: 60,
     
     // Počet pokusů před označením jako "failed"
     maxRetries: 3,
