@@ -5,8 +5,8 @@ import { pool } from '../db/client';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '24h';
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
