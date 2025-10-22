@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   apk-manager:
-    image: ghcr.io/nemovitostnik-h/droid-deploy:main
+    image: "ghcr.io/nemovitostnik-h/droid-deploy:main"
     container_name: apk-manager
     restart: unless-stopped
     

@@ -10,38 +10,13 @@ Tato příručka vás provede procesem nasazení APK Manager aplikace do vašeho
 
 Portainer umožňuje nasazení přímo z GitHub repozitáře s automatickými updaty.
 
-#### Krok 1: Vytvoř GitHub Personal Access Token (PAT)
-
-1. Jdi na GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
-2. Klikni **"Generate new token (classic)"**
-3. Vyber scope:
-   - ✅ `read:packages` (povinné pro pull z GHCR)
-   - ✅ `repo` (povinné pro privátní repozitáře)
-   - ⚪ `write:packages` (volitelné, pokud budeš push dělat ručně)
-4. Klikni **"Generate token"**
-5. **Zkopíruj token** (zobrazí se jen jednou!) a ulož si ho bezpečně
-
-#### Krok 2: Přidej GHCR Registry do Portaineru
-
-1. V Portaineru jdi na **Registries** → **Add registry**
-2. Vyplň údaje:
-   - **Name**: `GitHub Container Registry` (nebo libovolný název)
-   - **Registry type**: **Custom registry**
-   - **Registry URL**: `ghcr.io`
-   - **Authentication**: Zapni
-   - **Username**: `nemovitostnik-h` (tvé GitHub username)
-   - **Password**: *tvůj PAT token z Kroku 1*
-3. Klikni **Add registry**
-
-#### Krok 3: Nasaď Stack z Git Repository
+#### Krok 1: Nasaď Stack z Git Repository
 
 1. V Portaineru jdi na **Stacks** → **Add stack**
 2. Zvol **Repository** jako Build method
 3. Vyplň údaje:
    - **Name**: `droid-deploy` (nebo libovolný název stacku)
-   - **Authentication**: ✅ Zapni (pro privátní repo)
-   - **Username**: `nemovitostnik-h`
-   - **Personal Access Token**: *tvůj PAT token*
+   - **Authentication**: ⚪ Vypni (repozitář je veřejný)
    - **Repository URL**: `https://github.com/Nemovitostnik-H/droid-deploy`
    - **Repository reference**: `main` (nebo jiná branch/tag)
    - **Compose path**: `docker-compose.yml`
@@ -73,26 +48,20 @@ Pokud preferuješ manuální nasazení bez Portaineru:
 git clone https://github.com/Nemovitostnik-H/droid-deploy.git
 cd droid-deploy
 
-# 2. Přihlas se k GHCR (pro privátní image)
-echo "TVŮJ_PAT_TOKEN" | docker login ghcr.io -u nemovitostnik-h --password-stdin
-
-# 3. Zkopíruj .env.example jako .env a uprav hodnoty
+# 2. Zkopíruj .env.example jako .env a uprav hodnoty
 cp .env.example .env
 nano .env  # nebo vim, code, atd.
 
-# 4. Spusť aplikaci
+# 3. Spusť aplikaci
 docker-compose up -d
 
-# 5. Zkontroluj logy
+# 4. Zkontroluj logy
 docker-compose logs -f
 ```
 
 #### Manuální pull & run (bez docker-compose)
 
 ```bash
-# Přihlášení k GHCR
-echo "TVŮJ_PAT_TOKEN" | docker login ghcr.io -u nemovitostnik-h --password-stdin
-
 # Pull image
 docker pull ghcr.io/nemovitostnik-h/droid-deploy:main
 
