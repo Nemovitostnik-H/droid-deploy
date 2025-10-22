@@ -1,6 +1,9 @@
 -- APK Manager Database Schema
 -- PostgreSQL 14+
 
+-- Required extensions
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
