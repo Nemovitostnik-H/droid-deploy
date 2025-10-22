@@ -6,59 +6,104 @@ Tato příručka vás provede procesem nasazení APK Manager aplikace do vašeho
 
 ## Docker Deployment (Doporučeno)
 
-### Rychlý start s Docker
+### Portainer Deployment (Nejjednodušší)
+
+Portainer umožňuje nasazení přímo z GitHub repozitáře s automatickými updaty.
+
+#### Krok 1: Vytvoř GitHub Personal Access Token (PAT)
+
+1. Jdi na GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. Klikni **"Generate new token (classic)"**
+3. Vyber scope:
+   - ✅ `read:packages` (povinné pro pull z GHCR)
+   - ✅ `repo` (povinné pro privátní repozitáře)
+   - ⚪ `write:packages` (volitelné, pokud budeš push dělat ručně)
+4. Klikni **"Generate token"**
+5. **Zkopíruj token** (zobrazí se jen jednou!) a ulož si ho bezpečně
+
+#### Krok 2: Přidej GHCR Registry do Portaineru
+
+1. V Portaineru jdi na **Registries** → **Add registry**
+2. Vyplň údaje:
+   - **Name**: `GitHub Container Registry` (nebo libovolný název)
+   - **Registry type**: **Custom registry**
+   - **Registry URL**: `ghcr.io`
+   - **Authentication**: Zapni
+   - **Username**: `nemovitostnik-h` (tvé GitHub username)
+   - **Password**: *tvůj PAT token z Kroku 1*
+3. Klikni **Add registry**
+
+#### Krok 3: Nasaď Stack z Git Repository
+
+1. V Portaineru jdi na **Stacks** → **Add stack**
+2. Zvol **Repository** jako Build method
+3. Vyplň údaje:
+   - **Name**: `droid-deploy` (nebo libovolný název stacku)
+   - **Authentication**: ✅ Zapni (pro privátní repo)
+   - **Username**: `nemovitostnik-h`
+   - **Personal Access Token**: *tvůj PAT token*
+   - **Repository URL**: `https://github.com/Nemovitostnik-H/droid-deploy`
+   - **Repository reference**: `main` (nebo jiná branch/tag)
+   - **Compose path**: `docker-compose.yml`
+4. **Environment variables** (přidej podle potřeby):
+   ```
+   APP_PORT=8580
+   API_BASE_URL=https://api.tvoje-domena.cz/api
+   APK_DATA_PATH=/home/jelly/docker/apk-manager
+   TZ=Europe/Prague
+   ```
+5. **GitOps updates** (volitelné): Zapni pro automatické updaty při změnách v Git repo
+6. Klikni **Deploy the stack**
+
+#### Jak fungují automatické updaty?
+
+Pokud zapneš **GitOps updates**:
+- Portainer pravidelně kontroluje změny v GitHub repozitáři
+- Při nové verzi automaticky stáhne image a restartuje kontejner
+- Ideální pro CI/CD workflow - push do `main` → automatický deploy
+
+### Docker Compose (Manuální nasazení)
+
+Pokud preferuješ manuální nasazení bez Portaineru:
+
+#### Rychlý start
 
 ```bash
-# Stažení a spuštění z GitHub Container Registry
-docker run -d \
-  --name apk-manager \
-  -p 80:80 \
-  ghcr.io/vase-repo/apk-manager:main
+# 1. Klonuj repozitář
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git
+cd droid-deploy
 
-# Pro produkci s volitelnou konfigurací
-docker run -d \
-  --name apk-manager \
-  -p 80:80 \
-  -v /data/apk:/data/apk:ro \
-  -e VITE_API_BASE_URL=https://api.vase-domena.cz/api \
-  ghcr.io/vase-repo/apk-manager:main
-```
+# 2. Přihlas se k GHCR (pro privátní image)
+echo "TVŮJ_PAT_TOKEN" | docker login ghcr.io -u nemovitostnik-h --password-stdin
 
-### Docker Compose (Doporučeno pro produkci)
+# 3. Zkopíruj .env.example jako .env a uprav hodnoty
+cp .env.example .env
+nano .env  # nebo vim, code, atd.
 
-Vytvořte soubor `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  apk-manager:
-    image: ghcr.io/vase-repo/apk-manager:main
-    container_name: apk-manager
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      # Přístup k APK souborům (read-only)
-      - /data/apk:/data/apk:ro
-    environment:
-      - VITE_API_BASE_URL=https://api.vase-domena.cz/api
-    networks:
-      - apk-network
-
-  # Přidejte své backend služby zde
-  # backend:
-  #   image: your-backend-image
-  #   ...
-
-networks:
-  apk-network:
-    driver: bridge
-```
-
-Spuštění:
-```bash
+# 4. Spusť aplikaci
 docker-compose up -d
+
+# 5. Zkontroluj logy
+docker-compose logs -f
+```
+
+#### Manuální pull & run (bez docker-compose)
+
+```bash
+# Přihlášení k GHCR
+echo "TVŮJ_PAT_TOKEN" | docker login ghcr.io -u nemovitostnik-h --password-stdin
+
+# Pull image
+docker pull ghcr.io/nemovitostnik-h/droid-deploy:main
+
+# Spuštění
+docker run -d \
+  --name apk-manager \
+  -p 8580:80 \
+  -v /home/jelly/docker/apk-manager:/data/apk:ro \
+  -e VITE_API_BASE_URL=https://api.tvoje-domena.cz/api \
+  -e TZ=Europe/Prague \
+  ghcr.io/nemovitostnik-h/droid-deploy:main
 ```
 
 ### Build vlastního Docker image
