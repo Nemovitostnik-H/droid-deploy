@@ -10,6 +10,8 @@ import authRouter from './routes/auth';
 dotenv.config();
 
 const app = express();
+// Trust first proxy (e.g., Nginx) so rate limiter reads correct client IP
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
