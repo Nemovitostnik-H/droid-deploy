@@ -83,8 +83,24 @@ export default function Settings() {
       'platform_dev_directory': 'Development adresář',
       'platform_rc_directory': 'Release Candidate adresář',
       'platform_prod_directory': 'Production adresář',
+      'backend_port': 'Backend Port',
+      'jwt_secret': 'JWT Secret',
+      'jwt_expires_in': 'JWT Expirace',
     };
     return labels[key] || key;
+  };
+
+  const getSettingDescription = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      'backend_port': 'Port na kterém běží backend server (výchozí: 3001)',
+      'jwt_secret': 'Tajný klíč pro JWT tokeny (doporučeno minimálně 32 znaků)',
+      'jwt_expires_in': 'Doba expirace JWT tokenů (např. "24h", "7d")',
+    };
+    return descriptions[key] || '';
+  };
+
+  const isPasswordField = (key: string): boolean => {
+    return key.includes('secret') || key.includes('password');
   };
 
   if (user?.role !== 'admin') {
@@ -131,24 +147,60 @@ export default function Settings() {
                 Nakonfigurujte cesty k adresářům pro ukládání APK souborů. Tyto cesty musí existovat v Docker kontejneru.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {settings.map((setting) => (
-                <div key={setting.key} className="space-y-2">
-                  <Label htmlFor={setting.key}>
-                    {getSettingLabel(setting.key)}
-                  </Label>
-                  <Input
-                    id={setting.key}
-                    type="text"
-                    value={formData[setting.key] || ''}
-                    onChange={(e) => handleChange(setting.key, e.target.value)}
-                    placeholder={setting.value}
-                  />
-                  {setting.description && (
-                    <p className="text-sm text-muted-foreground">{setting.description}</p>
-                  )}
+            <CardContent className="space-y-6">
+              {/* Directory Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Adresáře</h3>
+                {settings
+                  .filter(s => s.key.includes('directory'))
+                  .map((setting) => (
+                    <div key={setting.key} className="space-y-2">
+                      <Label htmlFor={setting.key}>
+                        {getSettingLabel(setting.key)}
+                      </Label>
+                      <Input
+                        id={setting.key}
+                        type="text"
+                        value={formData[setting.key] || ''}
+                        onChange={(e) => handleChange(setting.key, e.target.value)}
+                        placeholder={setting.value}
+                      />
+                      {(setting.description || getSettingDescription(setting.key)) && (
+                        <p className="text-sm text-muted-foreground">
+                          {setting.description || getSettingDescription(setting.key)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+
+              {/* Server Settings */}
+              {settings.some(s => !s.key.includes('directory')) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold">Serverové nastavení</h3>
+                  {settings
+                    .filter(s => !s.key.includes('directory'))
+                    .map((setting) => (
+                      <div key={setting.key} className="space-y-2">
+                        <Label htmlFor={setting.key}>
+                          {getSettingLabel(setting.key)}
+                        </Label>
+                        <Input
+                          id={setting.key}
+                          type={isPasswordField(setting.key) ? "password" : "text"}
+                          value={formData[setting.key] || ''}
+                          onChange={(e) => handleChange(setting.key, e.target.value)}
+                          placeholder={setting.value}
+                        />
+                        {(setting.description || getSettingDescription(setting.key)) && (
+                          <p className="text-sm text-muted-foreground">
+                            {setting.description || getSettingDescription(setting.key)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                 </div>
-              ))}
+              )}
 
               <div className="pt-4 flex gap-2">
                 <Button onClick={handleSave} disabled={saving}>

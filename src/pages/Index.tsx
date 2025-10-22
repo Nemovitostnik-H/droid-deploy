@@ -117,6 +117,15 @@ const Index = () => {
     }
   };
 
+  // Load initial data
+  useEffect(() => {
+    if (!user) return;
+    
+    // Load data on mount
+    loadApks();
+    loadPublications();
+  }, [user]);
+
   // Auto-scan every 60 seconds only when user is authenticated
   useEffect(() => {
     if (!user) return;

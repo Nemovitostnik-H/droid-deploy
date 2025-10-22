@@ -59,7 +59,10 @@ VALUES
     ('apk_staging_directory', '/data/apk/staging', 'Staging directory for uploaded APK files'),
     ('platform_dev_directory', '/data/apk/development', 'Development platform directory'),
     ('platform_rc_directory', '/data/apk/release-candidate', 'Release Candidate platform directory'),
-    ('platform_prod_directory', '/data/apk/production', 'Production platform directory')
+    ('platform_prod_directory', '/data/apk/production', 'Production platform directory'),
+    ('backend_port', '3001', 'Backend server port'),
+    ('jwt_secret', 'your-secret-key-change-this-in-production', 'JWT secret key for token signing'),
+    ('jwt_expires_in', '24h', 'JWT token expiration time')
 ON CONFLICT (key) DO NOTHING;
 
 -- Indexes for better performance

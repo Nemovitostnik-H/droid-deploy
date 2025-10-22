@@ -3,14 +3,18 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { authenticateToken } from '../middleware/auth';
 import { pool } from '../db/client';
+import { getSetting } from './settings';
 
 const router = Router();
 
-const PLATFORM_PATHS: Record<string, string> = {
-  development: process.env.PLATFORM_DEV || '/data/apk/development',
-  release_candidate: process.env.PLATFORM_RC || '/data/apk/release-candidate',
-  production: process.env.PLATFORM_PROD || '/data/apk/production'
-};
+// Get platform directories from settings with fallback to ENV
+async function getPlatformPaths(): Promise<Record<string, string>> {
+  return {
+    development: await getSetting('platform_dev_directory', process.env.PLATFORM_DEV || '/data/apk/development'),
+    release_candidate: await getSetting('platform_rc_directory', process.env.PLATFORM_RC || '/data/apk/release-candidate'),
+    production: await getSetting('platform_prod_directory', process.env.PLATFORM_PROD || '/data/apk/production')
+  };
+}
 
 // GET /api/publications/list - List all publications
 router.get('/list', authenticateToken, async (req, res) => {
@@ -44,6 +48,9 @@ router.post('/create', authenticateToken, async (req, res) => {
   try {
     const { apkId, platform } = req.body;
     const userId = (req as any).user.id;
+
+    // Get platform paths from settings
+    const PLATFORM_PATHS = await getPlatformPaths();
 
     // Validate platform
     if (!PLATFORM_PATHS[platform]) {
@@ -131,6 +138,9 @@ router.post('/create', authenticateToken, async (req, res) => {
 router.get('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Get platform paths from settings
+    const PLATFORM_PATHS = await getPlatformPaths();
 
     const result = await pool.query(
       `SELECT 
