@@ -2,7 +2,137 @@
 
 ## Přehled
 
-Tato příručka vás provede procesem nasazení APK Manager aplikace do vašeho vlastního datacentra.
+Tato příručka vás provede procesem nasazení APK Manager aplikace do vašeho vlastního datacentra pomocí Docker kontejneru nebo klasické instalace.
+
+## Docker Deployment (Doporučeno)
+
+### Rychlý start s Docker
+
+```bash
+# Stažení a spuštění z GitHub Container Registry
+docker run -d \
+  --name apk-manager \
+  -p 80:80 \
+  ghcr.io/vase-repo/apk-manager:main
+
+# Pro produkci s volitelnou konfigurací
+docker run -d \
+  --name apk-manager \
+  -p 80:80 \
+  -v /data/apk:/data/apk:ro \
+  -e VITE_API_BASE_URL=https://api.vase-domena.cz/api \
+  ghcr.io/vase-repo/apk-manager:main
+```
+
+### Docker Compose (Doporučeno pro produkci)
+
+Vytvořte soubor `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  apk-manager:
+    image: ghcr.io/vase-repo/apk-manager:main
+    container_name: apk-manager
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # Přístup k APK souborům (read-only)
+      - /data/apk:/data/apk:ro
+    environment:
+      - VITE_API_BASE_URL=https://api.vase-domena.cz/api
+    networks:
+      - apk-network
+
+  # Přidejte své backend služby zde
+  # backend:
+  #   image: your-backend-image
+  #   ...
+
+networks:
+  apk-network:
+    driver: bridge
+```
+
+Spuštění:
+```bash
+docker-compose up -d
+```
+
+### Build vlastního Docker image
+
+Pokud chcete buildnout vlastní image:
+
+```bash
+# Build
+docker build -t apk-manager:latest .
+
+# Run
+docker run -d -p 80:80 apk-manager:latest
+```
+
+### GitHub Actions - Automatické buildy
+
+Po push do GitHub se automaticky vytvoří a publikuje Docker image na ghcr.io pomocí GitHub Actions workflow.
+
+Image je dostupný na:
+- `ghcr.io/vase-repo/apk-manager:main` - nejnovější verze z main
+- `ghcr.io/vase-repo/apk-manager:v1.0.0` - konkrétní tagged verze
+- `ghcr.io/vase-repo/apk-manager:sha-abc123` - konkrétní commit
+
+### Docker konfigurace
+
+**Environment proměnné:**
+- `VITE_API_BASE_URL` - URL vašeho backend API
+
+**Volumes:**
+- `/data/apk` - Přístup k APK souborům (mount jako read-only)
+
+**Porty:**
+- `80` - HTTP port pro webovou aplikaci
+
+**Health Check:**
+Kontejner má zabudovaný health check, který kontroluje dostupnost aplikace každých 30 sekund.
+
+### Docker v produkci s Nginx Proxy
+
+Pro produkci doporučujeme použít reverse proxy (Nginx, Traefik) pro SSL:
+
+```yaml
+version: '3.8'
+
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl:ro
+    depends_on:
+      - apk-manager
+    networks:
+      - apk-network
+
+  apk-manager:
+    image: ghcr.io/vase-repo/apk-manager:main
+    restart: unless-stopped
+    networks:
+      - apk-network
+    volumes:
+      - /data/apk:/data/apk:ro
+
+networks:
+  apk-network:
+    driver: bridge
+```
+
+---
+
+## Klasická instalace (Bez Dockeru)
 
 ## Požadavky
 
