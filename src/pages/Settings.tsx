@@ -78,11 +78,11 @@ export default function Settings() {
 
   const getSettingLabel = (key: string): string => {
     const labels: Record<string, string> = {
-      'apk_directory': 'Základní APK adresář',
-      'apk_staging_directory': 'Staging adresář',
-      'platform_dev_directory': 'Development adresář',
-      'platform_rc_directory': 'Release Candidate adresář',
-      'platform_prod_directory': 'Production adresář',
+      'apk_directory': 'Zdrojový APK adresář',
+      'apk_staging_directory': 'Staging adresář (pro nahrávání)',
+      'platform_dev_directory': 'Development publikační adresář',
+      'platform_rc_directory': 'Release Candidate publikační adresář',
+      'platform_prod_directory': 'Production publikační adresář',
       'backend_port': 'Backend Port',
       'jwt_secret': 'JWT Secret',
       'jwt_expires_in': 'JWT Expirace',
@@ -92,6 +92,11 @@ export default function Settings() {
 
   const getSettingDescription = (key: string): string => {
     const descriptions: Record<string, string> = {
+      'apk_directory': 'Hlavní adresář, kde backend hledá APK soubory k načtení do systému',
+      'apk_staging_directory': 'Dočasný adresář pro nahrávané APK soubory před importem',
+      'platform_dev_directory': 'Cílový adresář pro publikaci APK na vývojové prostředí',
+      'platform_rc_directory': 'Cílový adresář pro publikaci APK na release candidate prostředí',
+      'platform_prod_directory': 'Cílový adresář pro publikaci APK na produkční prostředí',
       'backend_port': 'Port na kterém běží backend server (výchozí: 3001)',
       'jwt_secret': 'Tajný klíč pro JWT tokeny (doporučeno minimálně 32 znaků)',
       'jwt_expires_in': 'Doba expirace JWT tokenů (např. "24h", "7d")',
@@ -101,6 +106,16 @@ export default function Settings() {
 
   const isPasswordField = (key: string): boolean => {
     return key.includes('secret') || key.includes('password');
+  };
+
+  const getDirectoryCategory = (key: string): 'source' | 'publication' | 'other' => {
+    if (key === 'apk_directory' || key === 'apk_staging_directory') {
+      return 'source';
+    }
+    if (key.includes('platform_')) {
+      return 'publication';
+    }
+    return 'other';
   };
 
   if (user?.role !== 'admin') {
@@ -148,11 +163,47 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Directory Settings */}
+              {/* Source Directory Settings */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Adresáře</h3>
+                <div>
+                  <h3 className="text-lg font-semibold">Zdrojové adresáře</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Adresáře, kde systém hledá a ukládá APK soubory
+                  </p>
+                </div>
                 {settings
-                  .filter(s => s.key.includes('directory'))
+                  .filter(s => getDirectoryCategory(s.key) === 'source')
+                  .map((setting) => (
+                    <div key={setting.key} className="space-y-2">
+                      <Label htmlFor={setting.key}>
+                        {getSettingLabel(setting.key)}
+                      </Label>
+                      <Input
+                        id={setting.key}
+                        type="text"
+                        value={formData[setting.key] || ''}
+                        onChange={(e) => handleChange(setting.key, e.target.value)}
+                        placeholder={setting.value}
+                      />
+                      {(setting.description || getSettingDescription(setting.key)) && (
+                        <p className="text-sm text-muted-foreground">
+                          {setting.description || getSettingDescription(setting.key)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+
+              {/* Publication Directories */}
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <h3 className="text-lg font-semibold">Publikační destinace</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Cílové adresáře, kam se kopírují APK soubory při publikaci
+                  </p>
+                </div>
+                {settings
+                  .filter(s => getDirectoryCategory(s.key) === 'publication')
                   .map((setting) => (
                     <div key={setting.key} className="space-y-2">
                       <Label htmlFor={setting.key}>
