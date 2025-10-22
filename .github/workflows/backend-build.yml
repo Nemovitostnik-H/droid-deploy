@@ -6,14 +6,10 @@ on:
       - main
     tags:
       - 'v*'
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-build.yml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'backend/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

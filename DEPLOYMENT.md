@@ -8,7 +8,7 @@ APK Manager je plně dockerizovaná aplikace připravená pro deployment pomocí
 
 APK Manager se skládá ze 3 Docker kontejnerů:
 - **Frontend** (`ghcr.io/nemovitostnik-h/droid-deploy:main`) - React aplikace na portu 8580
-- **Backend** (buildováno z GitHub repozitáře) - Node.js/Express API na portu 3000
+- **Backend** (`ghcr.io/nemovitostnik-h/droid-deploy-backend:main`) - Node.js/Express API na portu 3000
 - **Database** (`postgres:16-alpine`) - PostgreSQL databáze na portu 5432
 
 ```
@@ -24,7 +24,7 @@ APK Manager se skládá ze 3 Docker kontejnerů:
                      └──────────────┘
 ```
 
-**Frontend běží z předpřipraveného Docker image, backend se builduje on-the-fly z GitHub repozitáře** - není potřeba lokální klonování!
+**Všechny kontejnery běží z předpřipravených Docker images** - žádné buildování, jen pull a spuštění!
 
 ---
 
@@ -81,9 +81,7 @@ services:
 
   # Backend - Node.js API
   backend:
-    build:
-      context: https://github.com/nemovitostnik-h/droid-deploy.git#main
-      dockerfile: backend/Dockerfile
+    image: "ghcr.io/nemovitostnik-h/droid-deploy-backend:main"
     container_name: apk-manager-backend
     restart: unless-stopped
     depends_on:
@@ -189,7 +187,7 @@ docker exec apk-manager-db psql -U apkmanager -d apkmanager -c "\dt"
 
 Klikni na **Deploy** v Dockge.
 
-První deploy může trvat 3-5 minut, protože backend se builduje z GitHub repozitáře. Následné starty jsou rychlejší.
+Dockge stáhne všechny potřebné Docker images a spustí kontejnery. První spuštění trvá cca 1-2 minuty.
 
 ### Krok 6: První přihlášení
 
@@ -347,19 +345,17 @@ docker-compose ps
 
 ## 🐛 Troubleshooting
 
-### Backend kontejner se nespustí při buildu
+### Backend image se nepodaří stáhnout
 
-**Problém:** Build failuje s chybou při stahování z GitHub
+**Problém:** Error "manifest unknown" nebo "not found" při pull
 
-**Řešení 1:** Zkontroluj internetové připojení Dockeru a přístup k GitHub:
-```bash
-docker run --rm alpine ping -c 3 github.com
-```
+**Řešení:** Backend image se automaticky builduje přes GitHub Actions při změnách v repozitáři. Pokud image neexistuje:
 
-**Řešení 2:** Zkus manuální build:
-```bash
-docker build -t apk-manager-backend https://github.com/nemovitostnik-h/droid-deploy.git#main:backend
-```
+1. Jdi na GitHub: https://github.com/Nemovitostnik-H/droid-deploy/actions
+2. Vyber workflow "Build and Push Backend Docker Image"
+3. Klikni **Run workflow** → **Run workflow**
+4. Počkej 2-3 minuty než build doběhne
+5. Zkus znovu deploy v Dockge
 
 ### Databáze není inicializovaná
 
@@ -429,7 +425,8 @@ Hlavní endpointy:
 - **GitHub Issues**: [https://github.com/Nemovitostnik-H/droid-deploy/issues](https://github.com/Nemovitostnik-H/droid-deploy/issues)
 - **Docker Images**: 
   - Frontend: `ghcr.io/nemovitostnik-h/droid-deploy:main`
-  - Backend: builduje se z `https://github.com/nemovitostnik-h/droid-deploy.git#main`
+  - Backend: `ghcr.io/nemovitostnik-h/droid-deploy-backend:main`
+- **GitHub Actions**: Backend image se automaticky builduje při změnách v main branch
 
 ---
 

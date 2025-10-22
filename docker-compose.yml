@@ -26,9 +26,7 @@ services:
 
   # Backend - Node.js API
   backend:
-    build:
-      context: https://github.com/nemovitostnik-h/droid-deploy.git#main
-      dockerfile: backend/Dockerfile
+    image: "ghcr.io/nemovitostnik-h/droid-deploy-backend:main"
     container_name: apk-manager-backend
     restart: unless-stopped
     depends_on:
