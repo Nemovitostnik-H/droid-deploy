@@ -69,7 +69,7 @@ export function UploadDialog({
               Klikněte nebo přetáhněte APK soubor
             </p>
             <p className="text-xs text-muted-foreground">
-              Maximální velikost: 200 MB
+              Maximální velikost: 500 MB
             </p>
           </div>
 

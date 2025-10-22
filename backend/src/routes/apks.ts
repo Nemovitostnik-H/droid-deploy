@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 200 * 1024 * 1024 // 200 MB limit
+    fileSize: 500 * 1024 * 1024 // 500 MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.originalname.endsWith('.apk')) {
