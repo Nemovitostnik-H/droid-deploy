@@ -1,88 +1,147 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { ApkTable } from "@/components/ApkTable";
 import { PublicationTable } from "@/components/PublicationTable";
 import { PublishDialog } from "@/components/PublishDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Scan } from "lucide-react";
 import { toast } from "sonner";
+import { apkApi, publicationApi, ApkFile, Publication } from "@/services/api";
 
-// Mock data
-const mockApkFiles = [
-  {
-    id: "1",
-    name: "MyApp",
-    version: "2.4.1",
-    build: "241",
-    date: "2025-10-10 14:23",
-    size: "45.2 MB",
-  },
-  {
-    id: "2",
-    name: "MyApp",
-    version: "2.4.0",
-    build: "240",
-    date: "2025-10-08 09:15",
-    size: "44.8 MB",
-  },
-  {
-    id: "3",
-    name: "MyApp",
-    version: "2.3.9",
-    build: "239",
-    date: "2025-10-05 16:42",
-    size: "44.5 MB",
-  },
-];
+interface ApkTableItem {
+  id: string;
+  name: string;
+  version: string;
+  build: string;
+  date: string;
+  size: string;
+}
 
-const mockPublications = [
-  {
-    id: "1",
-    apkName: "MyApp",
-    version: "2.4.0",
-    platform: "production" as const,
-    status: "published" as const,
-    requestedBy: "Jan Novák",
-    requestedAt: "2025-10-08 10:00",
-    publishedBy: "Systém",
-    publishedAt: "2025-10-08 10:15",
-  },
-  {
-    id: "2",
-    apkName: "MyApp",
-    version: "2.4.1",
-    platform: "release_candidate" as const,
-    status: "pending" as const,
-    requestedBy: "Petr Dvořák",
-    requestedAt: "2025-10-10 15:30",
-  },
-  {
-    id: "3",
-    apkName: "MyApp",
-    version: "2.3.8",
-    platform: "development" as const,
-    status: "published" as const,
-    requestedBy: "Marie Svobodová",
-    requestedAt: "2025-10-03 11:20",
-    publishedBy: "Systém",
-    publishedAt: "2025-10-03 11:25",
-  },
-];
+interface PublicationTableItem {
+  id: string;
+  apkName: string;
+  version: string;
+  platform: 'development' | 'release_candidate' | 'production';
+  status: 'pending' | 'published' | 'failed';
+  requestedBy: string;
+  requestedAt: string;
+  publishedBy?: string;
+  publishedAt?: string;
+}
 
 const Index = () => {
-  const [selectedApk, setSelectedApk] = useState<typeof mockApkFiles[0] | null>(null);
+  const [selectedApk, setSelectedApk] = useState<ApkTableItem | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [apkFiles, setApkFiles] = useState<ApkTableItem[]>([]);
+  const [publications, setPublications] = useState<PublicationTableItem[]>([]);
+  const [isLoadingApks, setIsLoadingApks] = useState(false);
+  const [isLoadingPublications, setIsLoadingPublications] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
-  const handlePublish = (apk: typeof mockApkFiles[0]) => {
+  // Load APKs
+  const loadApks = async () => {
+    setIsLoadingApks(true);
+    try {
+      const response = await apkApi.list();
+      if (response.success) {
+        const mapped = response.apks.map((apk: ApkFile) => ({
+          id: apk.id.toString(),
+          name: apk.package_name,
+          version: apk.version_name,
+          build: apk.version_code.toString(),
+          date: new Date(apk.created_at).toLocaleString('cs-CZ'),
+          size: `${(apk.file_size / 1024 / 1024).toFixed(1)} MB`,
+        }));
+        setApkFiles(mapped);
+      }
+    } catch (error: any) {
+      toast.error("Chyba při načítání APK", {
+        description: error.message,
+      });
+    } finally {
+      setIsLoadingApks(false);
+    }
+  };
+
+  // Load publications
+  const loadPublications = async () => {
+    setIsLoadingPublications(true);
+    try {
+      const response = await publicationApi.list();
+      if (response.success) {
+        const mapped = response.publications.map((pub: Publication) => ({
+          id: pub.id.toString(),
+          apkName: pub.apk_name || 'Unknown',
+          version: pub.version || 'N/A',
+          platform: pub.platform,
+          status: pub.status,
+          requestedBy: pub.requested_by_name || `User #${pub.requested_by}`,
+          requestedAt: new Date(pub.requested_at).toLocaleString('cs-CZ'),
+          publishedBy: pub.published_at ? 'Systém' : undefined,
+          publishedAt: pub.published_at ? new Date(pub.published_at).toLocaleString('cs-CZ') : undefined,
+        }));
+        setPublications(mapped);
+      }
+    } catch (error: any) {
+      toast.error("Chyba při načítání publikací", {
+        description: error.message,
+      });
+    } finally {
+      setIsLoadingPublications(false);
+    }
+  };
+
+  // Scan APK directory
+  const handleScan = async () => {
+    setIsScanning(true);
+    try {
+      const response = await apkApi.scan();
+      if (response.success) {
+        toast.success("Skenování dokončeno", {
+          description: `Naskenováno: ${response.scanned}, Přidáno: ${response.added}, Přeskočeno: ${response.skipped}`,
+        });
+        await loadApks();
+      }
+    } catch (error: any) {
+      toast.error("Chyba při skenování", {
+        description: error.message,
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadApks();
+    loadPublications();
+  }, []);
+
+  const handlePublish = (apk: ApkTableItem) => {
     setSelectedApk(apk);
     setPublishDialogOpen(true);
   };
 
-  const handleConfirmPublish = (platform: string) => {
-    toast.success(`Publikace zadána`, {
-      description: `${selectedApk?.name} v${selectedApk?.version} bude publikováno na ${platform}`,
-    });
-    setPublishDialogOpen(false);
-    setSelectedApk(null);
+  const handleConfirmPublish = async (platform: string) => {
+    if (!selectedApk) return;
+
+    try {
+      const response = await publicationApi.create(parseInt(selectedApk.id), platform);
+      if (response.success) {
+        toast.success("Publikace zadána", {
+          description: `${selectedApk.name} v${selectedApk.version} bude publikováno na ${platform}`,
+        });
+        setPublishDialogOpen(false);
+        setSelectedApk(null);
+        // Reload publications to show new entry
+        await loadPublications();
+      }
+    } catch (error: any) {
+      toast.error("Chyba při publikaci", {
+        description: error.message,
+      });
+    }
   };
 
   return (
@@ -108,8 +167,28 @@ const Index = () => {
                   Přehled všech APK souborů ve sledovaném adresáři
                 </p>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadApks}
+                  disabled={isLoadingApks}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingApks ? 'animate-spin' : ''}`} />
+                  Obnovit
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleScan}
+                  disabled={isScanning}
+                >
+                  <Scan className={`h-4 w-4 mr-2 ${isScanning ? 'animate-pulse' : ''}`} />
+                  Skenovat adresář
+                </Button>
+              </div>
             </div>
-            <ApkTable apkFiles={mockApkFiles} onPublish={handlePublish} />
+            <ApkTable apkFiles={apkFiles} onPublish={handlePublish} />
           </TabsContent>
 
           <TabsContent value="publications" className="space-y-4">
@@ -120,8 +199,17 @@ const Index = () => {
                   Přehled všech publikačních požadavků a jejich stavů
                 </p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadPublications}
+                disabled={isLoadingPublications}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingPublications ? 'animate-spin' : ''}`} />
+                Obnovit
+              </Button>
             </div>
-            <PublicationTable publications={mockPublications} />
+            <PublicationTable publications={publications} />
           </TabsContent>
         </Tabs>
       </main>
