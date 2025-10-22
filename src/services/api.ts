@@ -29,6 +29,13 @@ export interface Publication {
   version?: string;
 }
 
+export interface Setting {
+  key: string;
+  value: string;
+  description?: string;
+  updated_at: string;
+}
+
 // Get auth token from localStorage
 const getAuthToken = (): string | null => {
   return localStorage.getItem("auth_token");
@@ -166,6 +173,39 @@ export const publicationApi = {
     return {
       success: response.success,
       publication: response.data
+    };
+  },
+};
+
+// Settings endpoints
+export const settingsApi = {
+  // Get all settings
+  list: async (): Promise<{ success: boolean; settings: Setting[] }> => {
+    const response = await fetchWithAuth(`${API_BASE}/settings`);
+    return {
+      success: response.success,
+      settings: response.data
+    };
+  },
+
+  // Get specific setting
+  get: async (key: string): Promise<{ success: boolean; setting: Setting }> => {
+    const response = await fetchWithAuth(`${API_BASE}/settings/${key}`);
+    return {
+      success: response.success,
+      setting: response.data
+    };
+  },
+
+  // Update setting
+  update: async (key: string, value: string): Promise<{ success: boolean; setting: Setting }> => {
+    const response = await fetchWithAuth(`${API_BASE}/settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    });
+    return {
+      success: response.success,
+      setting: response.data
     };
   },
 };

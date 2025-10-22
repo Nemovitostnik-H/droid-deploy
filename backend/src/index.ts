@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import apksRouter from './routes/apks';
 import publicationsRouter from './routes/publications';
 import authRouter from './routes/auth';
+import settingsRouter from './routes/settings';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.get('/health', (req, res) => {
 app.use('/api/apk', apksRouter);
 app.use('/api/publications', publicationsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/settings', settingsRouter);
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

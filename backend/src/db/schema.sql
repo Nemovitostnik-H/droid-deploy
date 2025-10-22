@@ -43,6 +43,25 @@ CREATE TABLE IF NOT EXISTS publications (
     error_message TEXT
 );
 
+-- Settings table - Application configuration
+CREATE TABLE IF NOT EXISTS settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by UUID REFERENCES users(id)
+);
+
+-- Insert default settings
+INSERT INTO settings (key, value, description)
+VALUES 
+    ('apk_directory', '/data/apk', 'Base directory for APK files'),
+    ('apk_staging_directory', '/data/apk/staging', 'Staging directory for uploaded APK files'),
+    ('platform_dev_directory', '/data/apk/development', 'Development platform directory'),
+    ('platform_rc_directory', '/data/apk/release-candidate', 'Release Candidate platform directory'),
+    ('platform_prod_directory', '/data/apk/production', 'Production platform directory')
+ON CONFLICT (key) DO NOTHING;
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_apk_files_package_version ON apk_files(package_name, version_code);
 CREATE INDEX IF NOT EXISTS idx_publications_status ON publications(status);

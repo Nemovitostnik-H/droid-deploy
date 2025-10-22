@@ -4,17 +4,28 @@ import path from 'path';
 import multer from 'multer';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { pool } from '../db/client';
+import { getSetting } from './settings';
 
 const router = Router();
-const APK_DIRECTORY = process.env.APK_DIRECTORY || '/data/apk';
-const STAGING_DIRECTORY = path.join(APK_DIRECTORY, 'staging');
+
+// Get APK directory from settings with fallback to ENV
+async function getApkDirectory(): Promise<string> {
+  return await getSetting('apk_directory', process.env.APK_DIRECTORY || '/data/apk');
+}
+
+async function getStagingDirectory(): Promise<string> {
+  const apkDir = await getApkDirectory();
+  const stagingDir = await getSetting('apk_staging_directory', path.join(apkDir, 'staging'));
+  return stagingDir;
+}
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     try {
-      await fs.mkdir(STAGING_DIRECTORY, { recursive: true });
-      cb(null, STAGING_DIRECTORY);
+      const stagingDir = await getStagingDirectory();
+      await fs.mkdir(stagingDir, { recursive: true });
+      cb(null, stagingDir);
     } catch (error) {
       cb(error as Error, '');
     }
@@ -107,14 +118,16 @@ router.get('/metadata/:id', authenticateToken, async (req, res) => {
 // POST /api/apk/scan - Scan APK directory and update database
 router.post('/scan', authenticateToken, async (req, res) => {
   try {
-    const files = await fs.readdir(APK_DIRECTORY);
+    const apkDir = await getApkDirectory();
+    const files = await fs.readdir(apkDir);
     const apkFiles = files.filter(f => f.endsWith('.apk'));
     
     let added = 0;
     let skipped = 0;
 
     for (const filename of apkFiles) {
-      const filePath = path.join(APK_DIRECTORY, filename);
+      const apkDir = await getApkDirectory();
+      const filePath = path.join(apkDir, filename);
       const stats = await fs.stat(filePath);
       
       // Parse filename - support multiple formats:

@@ -7,7 +7,7 @@
 APK Manager je plně dockerizovaná aplikace postavená na standardních Docker images.
 
 - **Frontend** (React + TypeScript) - `ghcr.io/nemovitostnik-h/droid-deploy:main`
-- **Backend API** (Node.js + Express) - `node:20-alpine` s ts-node runtime
+- **Backend API** (Node.js + Express) - `ghcr.io/nemovitostnik-h/droid-deploy-backend:main`
 - **Database** (PostgreSQL 16) - `postgres:16-alpine`
 
 ```
@@ -22,6 +22,14 @@ APK Manager je plně dockerizovaná aplikace postavená na standardních Docker 
                      │  /data/apk/* │
                      └──────────────┘
 ```
+
+## ✨ Nové funkce v této verzi
+
+### 🎛️ Administrátorské nastavení (v0.2.0)
+- **Webové rozhraní pro konfiguraci** - administrátoři mohou přímo z UI upravit cesty k APK adresářům
+- **Dynamická konfigurace** - změny se ukládají do databáze a lze je změnit bez restartu
+- **Fallback na ENV** - pokud nastavení v databázi chybí, použijí se environment variables
+- **Lepší parsing názvů APK** - podpora pro formáty: `AppName-v1.2.3.apk`, `AppName_1.2.3_Build.apk`
 
 ## 🚀 Rychlý start (Dockge)
 
@@ -39,21 +47,21 @@ git clone https://github.com/Nemovitostnik-H/droid-deploy.git
 cd droid-deploy
 
 # 2. Vytvoř APK adresáře
-mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
+mkdir -p /files/docker/apk-manager/{staging,development,release-candidate,production}
+chmod -R 755 /files/docker/apk-manager
 
-# 3. V Dockge vytvoř nový stack "apk-manager"
-# Zkopíruj obsah docker-compose.yml z klonovaného repo
+# 3. Zkopíruj .env.example a uprav hodnoty
+cp .env.example .env
+nano .env  # ZMĚŇ POSTGRES_PASSWORD, JWT_SECRET a APK_DATA_PATH
 
-# 4. Nastav environment variables v Dockge:
-APP_PORT=8580
-API_BASE_URL=http://your-server-ip:3000/api
-POSTGRES_PASSWORD=ZMĚŇ-NA-SILNÉ-HESLO
-JWT_SECRET=ZMĚŇ-NA-NÁHODNÝ-SECRET-32-ZNAKŮ
-APK_DATA_PATH=/home/jelly/docker/apk-manager
+# 4. Deploy v Dockge
+# - V Dockge vytvoř nový stack "apk-manager"
+# - Zkopíruj obsah docker-compose.yml
+# - Nastav environment variables z .env souboru
+# - Klikni Deploy
 
-# 5. Deploy v Dockge a inicializuj databázi:
-wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/backend/src/db/schema.sql
-docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
+# 5. Databáze se inicializuje automaticky při prvním startu
+# Zkontroluj logy: docker-compose logs postgres
 ```
 
 ### První přihlášení
@@ -64,6 +72,21 @@ Otevři v prohlížeči: `http://your-server-ip:8580`
 - **Password**: `admin123`
 
 **⚠️ BEZPEČNOST:** Změň heslo okamžitě po prvním přihlášení!
+
+### Konfigurace APK adresářů
+
+Po přihlášení jako administrátor:
+1. Klikni na tlačítko **"Nastavení"** v pravém horním rohu
+2. Uprav cesty k adresářům podle potřeby
+3. Ujisti se, že adresáře existují v Docker kontejneru
+4. Klikni **"Uložit změny"**
+
+**Výchozí nastavení:**
+- Základní adresář: `/data/apk`
+- Staging: `/data/apk/staging`
+- Development: `/data/apk/development`
+- Release Candidate: `/data/apk/release-candidate`
+- Production: `/data/apk/production`
 
 ## 📖 Dokumentace
 

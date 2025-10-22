@@ -1,4 +1,4 @@
-import { Package, User, BookOpen, LogOut } from "lucide-react";
+import { Package, User, BookOpen, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +53,17 @@ export const DashboardHeader = () => {
               <BookOpen className="h-4 w-4" />
               Dokumentace
             </Button>
+            {user.role === 'admin' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="h-4 w-4" />
+                Nastavení
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
