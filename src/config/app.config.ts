@@ -58,13 +58,13 @@ export const appConfig = {
   // Nastavení souborového systému
   storage: {
     // Cesta ke sledovanému adresáři s APK soubory
-    apkDirectory: process.env.APK_DIRECTORY || "/files/docker/apk-manager/staging",
+    apkDirectory: process.env.APK_DIRECTORY || "/data/apk/staging",
     
     // Cesty k publikačním platformám
     platforms: {
-      development: process.env.PLATFORM_DEV || "/files/docker/apk-manager/development",
-      release_candidate: process.env.PLATFORM_RC || "/files/docker/apk-manager/release-candidate",
-      production: process.env.PLATFORM_PROD || "/files/docker/apk-manager/production",
+      development: process.env.PLATFORM_DEV || "/data/apk/development",
+      release_candidate: process.env.PLATFORM_RC || "/data/apk/release-candidate",
+      production: process.env.PLATFORM_PROD || "/data/apk/production",
     },
     
     // Maximální velikost APK souboru (v MB)
