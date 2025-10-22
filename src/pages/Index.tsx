@@ -87,7 +87,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader userName="Jan Novák" userRole="Publisher" />
+      <DashboardHeader />
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="apk" className="space-y-6">

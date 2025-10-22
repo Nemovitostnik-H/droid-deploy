@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlatformBadge } from "./PlatformBadge";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ShieldAlert } from "lucide-react";
 
 interface ApkFile {
   id: string;
@@ -39,6 +42,9 @@ export const PublishDialog = ({
   onConfirm,
 }: PublishDialogProps) => {
   const [platform, setPlatform] = useState<string>("");
+  const { user } = useAuth();
+
+  const canPublishToProduction = user?.role === 'admin';
 
   const handleConfirm = () => {
     if (platform) {
@@ -83,13 +89,21 @@ export const PublishDialog = ({
                     Release Candidate
                   </div>
                 </SelectItem>
-                <SelectItem value="production">
+                <SelectItem value="production" disabled={!canPublishToProduction}>
                   <div className="flex items-center gap-2">
-                    Production
+                    Production {!canPublishToProduction && "(Pouze admin)"}
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
+            {!canPublishToProduction && (
+              <Alert variant="default" className="mt-2">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Pouze administrátoři mohou publikovat na produkční prostředí.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </div>
         <DialogFooter>

@@ -1,14 +1,32 @@
-import { Package, User, BookOpen } from "lucide-react";
+import { Package, User, BookOpen, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface DashboardHeaderProps {
-  userName: string;
-  userRole: string;
-}
+const roleLabels: Record<string, string> = {
+  admin: 'Administrátor',
+  developer: 'Vývojář',
+  viewer: 'Pozorovatel'
+};
 
-export const DashboardHeader = ({ userName, userRole }: DashboardHeaderProps) => {
+export const DashboardHeader = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  if (!user) return null;
 
   return (
     <header className="border-b border-border bg-card">
@@ -35,13 +53,33 @@ export const DashboardHeader = ({ userName, userRole }: DashboardHeaderProps) =>
               <BookOpen className="h-4 w-4" />
               Dokumentace
             </Button>
-            <div className="text-right">
-              <p className="text-sm font-medium text-foreground">{userName}</p>
-              <p className="text-xs text-muted-foreground">{userRole}</p>
-            </div>
-            <Button variant="outline" size="icon">
-              <User className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <User className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{roleLabels[user.role]}</p>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Můj účet</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled>
+                  <User className="mr-2 h-4 w-4" />
+                  {user.username}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  Role: {roleLabels[user.role]}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Odhlásit se
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
