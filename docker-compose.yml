@@ -40,6 +40,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - TS_NODE_TRANSPILE_ONLY=true
       - DATABASE_URL=postgresql://${POSTGRES_USER:-apkmanager}:${POSTGRES_PASSWORD:-apkmanager}@apk-manager-db:5432/${POSTGRES_DB:-apkmanager}
       - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
       - JWT_EXPIRES_IN=24h
