@@ -1,73 +1,226 @@
-# Welcome to your Lovable project
+# 📱 APK Manager
 
-## Project info
+> Systém pro správu a publikaci Android APK souborů napříč různými platformami (Development, Release Candidate, Production).
 
-**URL**: https://lovable.dev/projects/a8830412-4e78-472c-b24f-04384e0e3e6c
+## 🏗️ Architektura
 
-## How can I edit this code?
+APK Manager je full-stack aplikace postavená na Docker Compose s těmito službami:
 
-There are several ways of editing your application.
+- **Frontend** (React + TypeScript) - Moderní UI pro správu APK souborů
+- **Backend API** (Node.js + Express) - RESTful API pro business logiku
+- **Database** (PostgreSQL 16) - Persistence dat (uživatelé, APK metadata, publikace)
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/a8830412-4e78-472c-b24f-04384e0e3e6c) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+┌─────────────┐      ┌─────────────┐      ┌──────────────┐
+│  Frontend   │─────▶│  Backend    │─────▶│  PostgreSQL  │
+│  (port 8580)│      │  (port 3000)│      │  (port 5432) │
+└─────────────┘      └─────────────┘      └──────────────┘
+       │                    │
+       │                    ▼
+       │             ┌──────────────┐
+       └────────────▶│  File System │
+                     │  /data/apk/* │
+                     └──────────────┘
 ```
 
-**Edit a file directly in GitHub**
+## 🚀 Rychlý start
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Požadavky
 
-**Use GitHub Codespaces**
+- Docker Engine 24.0+
+- Docker Compose 2.0+
+- 2GB+ volného RAM
+- Přístup k adresáři pro APK soubory
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Instalace (3 kroky)
 
-## What technologies are used for this project?
+```bash
+# 1. Klonuj repozitář
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git
+cd droid-deploy
 
-This project is built with:
+# 2. Nastav environment variables
+cp .env.example .env
+nano .env  # ZMĚŇ: POSTGRES_PASSWORD, JWT_SECRET, APK_DATA_PATH
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# 3. Spusť aplikaci
+docker-compose up -d
+```
 
-## How can I deploy this project?
+### První přihlášení
 
-Simply open [Lovable](https://lovable.dev/projects/a8830412-4e78-472c-b24f-04384e0e3e6c) and click on Share -> Publish.
+Aplikace vytvoří výchozí admin účet:
 
-## Can I connect a custom domain to my Lovable project?
+- **URL**: `http://localhost:8580`
+- **Username**: `admin`
+- **Password**: `admin123`
 
-Yes, you can!
+**⚠️ BEZPEČNOST:** Změň heslo okamžitě po prvním přihlášení!
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📖 Dokumentace
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Kompletní deployment guide (Portainer + Docker Compose)
+- **[backend/README.md](./backend/README.md)** - API dokumentace a backend development
+- **Frontend dokumentace** - Dostupná přímo v aplikaci po přihlášení
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **TailwindCSS** - Styling
+- **shadcn/ui** - Component library
+- **TanStack Query** - Data fetching
+
+### Backend
+- **Node.js 20+** - Runtime
+- **Express** - Web framework
+- **TypeScript** - Type safety
+- **PostgreSQL 16** - Database
+- **JWT** - Authentication
+- **Bcrypt** - Password hashing
+
+### Infrastructure
+- **Docker** - Containerization
+- **Nginx** - Frontend web server
+- **GitHub Actions** - CI/CD (optional)
+
+## 📁 Struktura projektu
+
+```
+droid-deploy/
+├── src/                    # Frontend React aplikace
+│   ├── components/        # UI komponenty
+│   ├── pages/            # Stránky aplikace
+│   ├── hooks/            # Custom React hooks
+│   └── config/           # Konfigurace
+├── backend/               # Backend Node.js API
+│   └── src/
+│       ├── routes/       # API endpointy
+│       ├── middleware/   # Auth middleware
+│       └── db/           # Database schema a client
+├── docker-compose.yml     # Orchestrace služeb
+├── .env.example          # Template pro environment variables
+└── DEPLOYMENT.md         # Deployment průvodce
+```
+
+## 🔧 Development
+
+### Frontend development
+
+```bash
+# Instalace dependencies
+npm install
+
+# Dev server s hot reload
+npm run dev
+
+# Build pro produkci
+npm run build
+```
+
+### Backend development
+
+```bash
+cd backend
+
+# Instalace dependencies
+npm install
+
+# Dev server s auto-restart
+npm run dev
+
+# Build
+npm run build
+
+# Produkční start
+npm start
+```
+
+## 📊 Správa služeb
+
+```bash
+# Zobrazit status všech kontejnerů
+docker-compose ps
+
+# Sledovat logy
+docker-compose logs -f
+
+# Restart služby
+docker-compose restart backend
+
+# Stop všech služeb
+docker-compose down
+
+# Aktualizace z Git + restart
+git pull && docker-compose up -d --build
+```
+
+## 🔐 Bezpečnost
+
+- **JWT authentication** s HS256
+- **Bcrypt** password hashing (cost factor 10)
+- **Rate limiting** (100 req/15min)
+- **Helmet.js** security headers
+- **CORS** konfigurace
+- **PostgreSQL** s prepared statements
+
+**KRITICKÉ pro produkci:**
+1. Změň `POSTGRES_PASSWORD` na silné heslo (min 16 znaků)
+2. Změň `JWT_SECRET` na náhodný secret (min 32 znaků)
+3. Nastav `CORS_ORIGIN` na konkrétní doménu (ne `*`)
+4. Používej HTTPS reverse proxy (Traefik/Caddy)
+5. Pravidelně aktualizuj Docker images
+
+## 🐛 Troubleshooting
+
+### Kontejnery se nespustí
+
+```bash
+# Zkontroluj logy
+docker-compose logs
+
+# Restartuj všechny služby
+docker-compose down && docker-compose up -d
+```
+
+### Backend nemůže přistoupit k APK souborům
+
+```bash
+# Zkontroluj oprávnění
+ls -la /data/apk
+
+# Oprav oprávnění
+chmod -R 755 /data/apk
+```
+
+### Databáze se neinicializuje
+
+```bash
+# Resetuj databázi (POZOR: smaže data!)
+docker-compose down -v
+docker-compose up -d
+```
+
+## 🤝 Contributing
+
+1. Fork repozitář
+2. Vytvoř feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit změny (`git commit -m 'Add amazing feature'`)
+4. Push do branch (`git push origin feature/amazing-feature`)
+5. Otevři Pull Request
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Nemovitostnik-H/droid-deploy/issues)
+- **Dokumentace**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **API Docs**: [backend/README.md](./backend/README.md)
+
+## 📄 License
+
+MIT License - viz [LICENSE](./LICENSE) soubor pro detaily.
+
+---
+
+**Vytvořeno s ❤️ pro jednodušší správu Android APK souborů**
