@@ -112,16 +112,19 @@ const Index = () => {
     }
   };
 
-  // Initial load and auto-refresh
+  // Initial scan and load
   useEffect(() => {
-    // Load data immediately
-    loadApks();
-    loadPublications();
+    // Initial scan and load data
+    const initialLoad = async () => {
+      await handleScan();
+      await loadPublications();
+    };
+    initialLoad();
 
-    // Set up auto-refresh every 60 seconds
-    const interval = setInterval(() => {
-      loadApks();
-      loadPublications();
+    // Set up auto-scan every 60 seconds
+    const interval = setInterval(async () => {
+      await handleScan();
+      await loadPublications();
     }, 60000);
 
     // Cleanup interval on unmount
