@@ -16,7 +16,7 @@ export const appConfig = {
   // API endpointy - upravte podle vaší infrastruktury
   api: {
     // Základní URL vašeho API serveru
-    baseUrl: process.env.VITE_API_BASE_URL || "http://localhost:3000/api",
+    baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api",
     
     // Endpointy pro jednotlivé operace
     endpoints: {
