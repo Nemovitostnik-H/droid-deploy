@@ -31,7 +31,7 @@ export interface Publication {
 
 // Get auth token from localStorage
 const getAuthToken = (): string | null => {
-  return localStorage.getItem("token");
+  return localStorage.getItem("auth_token");
 };
 
 // Generic fetch wrapper with auth
@@ -54,7 +54,8 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
   if (response.status === 401) {
     // Token expired or invalid
-    localStorage.removeItem("token");
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
     window.location.href = "/login";
     throw new Error("Authentication required");
   }
@@ -117,7 +118,8 @@ export const apkApi = {
     });
 
     if (response.status === 401) {
-      localStorage.removeItem("token");
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
       window.location.href = "/login";
       throw new Error("Authentication required");
     }
