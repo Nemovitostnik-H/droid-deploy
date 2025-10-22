@@ -211,19 +211,30 @@ CREATE TABLE publications (
 
 ## 🛠️ Development
 
+### Lokální vývoj
+
 ```bash
 # Install dependencies
 npm install
 
-# Run in development mode
+# Run in development mode (s auto-restart)
 npm run dev
 
-# Build
-npm run build
+# Produkční režim (Docker používá ts-node přímo)
+npx ts-node src/index.ts
+```
 
-# Run in production
-npm start
+### Docker (Produkce)
 
+Backend v produkci běží s `ts-node` runtime - **žádné buildování není potřeba**.
+
+Docker Compose automaticky:
+1. Nainstaluje dependencies (`npm install`)
+2. Spustí TypeScript přímo (`npx ts-node src/index.ts`)
+
+### Database migrace
+
+```bash
 # Migrate database
 npm run db:migrate
 ```

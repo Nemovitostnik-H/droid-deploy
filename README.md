@@ -4,10 +4,10 @@
 
 ## 🏗️ Architektura
 
-APK Manager je plně dockerizovaná aplikace - **žádné buildování, žádné klonování**. Vše běží z předpřipravených Docker images.
+APK Manager je plně dockerizovaná aplikace postavená na standardních Docker images.
 
 - **Frontend** (React + TypeScript) - `ghcr.io/nemovitostnik-h/droid-deploy:main`
-- **Backend API** (Node.js + Express) - `ghcr.io/nemovitostnik-h/droid-deploy-backend:main`
+- **Backend API** (Node.js + Express) - `node:20-alpine` s ts-node runtime
 - **Database** (PostgreSQL 16) - `postgres:16-alpine`
 
 ```
@@ -31,23 +31,27 @@ APK Manager je plně dockerizovaná aplikace - **žádné buildování, žádné
 - Dockge nebo Portainer (doporučeno)
 - 2GB+ volného RAM
 
-### Instalace (4 kroky)
+### Instalace (5 kroků)
 
 ```bash
-# 1. Vytvoř APK adresáře
+# 1. Naklonuj repozitář
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git
+cd droid-deploy
+
+# 2. Vytvoř APK adresáře
 mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
 
-# 2. V Dockge vytvoř nový stack "apk-manager"
-# Zkopíruj docker-compose.yml z tohoto repo
+# 3. V Dockge vytvoř nový stack "apk-manager"
+# Zkopíruj obsah docker-compose.yml z klonovaného repo
 
-# 3. Nastav environment variables v Dockge:
+# 4. Nastav environment variables v Dockge:
 APP_PORT=8580
 API_BASE_URL=http://your-server-ip:3000/api
 POSTGRES_PASSWORD=ZMĚŇ-NA-SILNÉ-HESLO
 JWT_SECRET=ZMĚŇ-NA-NÁHODNÝ-SECRET-32-ZNAKŮ
 APK_DATA_PATH=/home/jelly/docker/apk-manager
 
-# 4. Deploy v Dockge a inicializuj databázi:
+# 5. Deploy v Dockge a inicializuj databázi:
 wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/backend/src/db/schema.sql
 docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
 ```
@@ -88,7 +92,8 @@ Otevři v prohlížeči: `http://your-server-ip:8580`
 ### Infrastructure
 - **Docker** - Containerization
 - **Nginx** - Frontend web server
-- **GitHub Actions** - CI/CD (optional)
+- **ts-node** - TypeScript runtime (backend)
+- **GitHub Actions** - CI/CD (frontend build)
 
 ## 📁 Struktura projektu
 
@@ -99,12 +104,12 @@ droid-deploy/
 │   ├── pages/            # Stránky aplikace
 │   ├── hooks/            # Custom React hooks
 │   └── config/           # Konfigurace
-├── backend/               # Backend Node.js API
+├── backend/               # Backend Node.js API (TypeScript)
 │   └── src/
 │       ├── routes/       # API endpointy
 │       ├── middleware/   # Auth middleware
 │       └── db/           # Database schema a client
-├── docker-compose.yml     # Orchestrace služeb
+├── docker-compose.yml     # Orchestrace služeb (backend běží s ts-node)
 ├── .env.example          # Template pro environment variables
 └── DEPLOYMENT.md         # Deployment průvodce
 ```
@@ -158,7 +163,7 @@ docker-compose restart backend
 docker-compose down
 
 # Aktualizace z Git + restart
-git pull && docker-compose up -d --build
+git pull && docker-compose down && docker-compose up -d
 ```
 
 ## 🔐 Bezpečnost

@@ -317,40 +317,51 @@ Response: {
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
                   <h3 className="text-lg font-bold mb-2 text-foreground">Architektura</h3>
                   <p className="text-muted-foreground mb-3">
-                    APK Manager běží z předpřipravených Docker images - žádné buildování:
+                    APK Manager běží na standardních Docker images:
                   </p>
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
                     <li><strong>Frontend</strong> - ghcr.io/nemovitostnik-h/droid-deploy:main (port 8580)</li>
-                    <li><strong>Backend</strong> - ghcr.io/nemovitostnik-h/droid-deploy-backend:main (port 3000)</li>
+                    <li><strong>Backend</strong> - node:20-alpine s ts-node runtime (port 3000)</li>
                     <li><strong>Database</strong> - postgres:16-alpine (port 5432)</li>
                   </ul>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Vytvoř APK adresáře</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">1. Naklonuj repozitář</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
-chmod -R 755 /home/jelly/docker/apk-manager`}
+{`cd /home/jelly/docker
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git apk-manager
+cd apk-manager`}
                     </pre>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Vytvoř stack v Dockge</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">2. Vytvoř APK adresáře</h3>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <pre className="text-sm text-muted-foreground overflow-x-auto">
+{`mkdir -p data/{staging,development,release-candidate,production}
+chmod -R 755 data`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Vytvoř stack v Dockge</h3>
                   <p className="text-muted-foreground mb-2">
                     V Dockge rozhraní klikni na <strong>+ New</strong>, pojmenuj stack <strong>apk-manager</strong>
-                    a zkopíruj docker-compose.yml z GitHub repozitáře.
+                    a zkopíruj obsah souboru docker-compose.yml z klonovaného repozitáře.
                   </p>
                   <div className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded">
                     <p className="text-sm text-primary font-medium">
-                      💡 Compose soubor: github.com/Nemovitostnik-H/droid-deploy/docker-compose.yml
+                      💡 DŮLEŽITÉ: Zkopíruj CELÝ docker-compose.yml včetně všech services
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">3. Environment proměnné v Dockge</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Environment proměnné v Dockge</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
 {`APP_PORT=8580
@@ -377,14 +388,14 @@ TZ=Europe/Prague`}
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">4. Deploy v Dockge</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Deploy v Dockge</h3>
                   <p className="text-muted-foreground mb-2">
                     Klikni na <strong>Deploy</strong> a počkej 1-2 minuty než se stáhnou images.
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">5. Inicializuj databázi (DŮLEŽITÉ!)</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">6. Inicializuj databázi (DŮLEŽITÉ!)</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
 {`# Stáhni schema
@@ -400,7 +411,7 @@ docker exec apk-manager-db psql -U apkmanager -d apkmanager -c "\\dt"`}
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground">6. První přihlášení</h3>
+                  <h3 className="text-lg font-bold mb-2 text-foreground">7. První přihlášení</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
 {`URL: http://your-server-ip:8580
@@ -419,10 +430,10 @@ Password: admin123`}
                   <h3 className="text-lg font-bold mb-2 text-foreground">Správa služeb (v Dockge)</h3>
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <pre className="text-sm text-muted-foreground overflow-x-auto">
-{`# Update na novou verzi - v Dockge:
-# 1. Klikni na stack apk-manager
-# 2. Klikni na Pull (stáhne nové images)
-# 3. Klikni na Restart
+{`# Update na novou verzi:
+# 1. cd /home/jelly/docker/apk-manager
+# 2. git pull
+# 3. V Dockge klikni na Restart
 
 # Backup databáze (CLI)
 docker exec apk-manager-db pg_dump -U apkmanager apkmanager > backup.sql`}

@@ -8,7 +8,7 @@ APK Manager je plně dockerizovaná aplikace připravená pro deployment pomocí
 
 APK Manager se skládá ze 3 Docker kontejnerů:
 - **Frontend** (`ghcr.io/nemovitostnik-h/droid-deploy:main`) - React aplikace na portu 8580
-- **Backend** (`ghcr.io/nemovitostnik-h/droid-deploy-backend:main`) - Node.js/Express API na portu 3000
+- **Backend** (`node:20-alpine`) - Node.js/Express API na portu 3000 (běží s ts-node)
 - **Database** (`postgres:16-alpine`) - PostgreSQL databáze na portu 5432
 
 ```
@@ -24,33 +24,41 @@ APK Manager se skládá ze 3 Docker kontejnerů:
                      └──────────────┘
 ```
 
-**Všechny kontejnery běží z předpřipravených Docker images** - žádné buildování, jen pull a spuštění!
+**Backend běží přímo z TypeScript source kódu** pomocí ts-node - žádné buildování, jen pull a spuštění!
 
 ---
 
 ## 🚀 Dockge Deployment (Doporučeno)
 
 ### Proč Dockge?
-- ✅ **Žádné klonování** - jen zkopíruj docker-compose.yml
+- ✅ **Jednoduché nasazení** - zkopíruj docker-compose.yml a backend složku
 - ✅ **Grafické UI** - jednoduché ovládání kontejnerů
 - ✅ **Automatické updaty** - pull nové image verze jedním klikem
 - ✅ **Integrace s Nginx Proxy Manager** - sdílená síť mediaservarr
 
-### Krok 1: Vytvoř APK adresáře
+### Krok 1: Naklonuj repozitář
 
-Na tvém hostitelském serveru vytvoř strukturu pro APK soubory:
+Na tvém hostitelském serveru:
 
 ```bash
-mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
-chmod -R 755 /home/jelly/docker/apk-manager
+cd /home/jelly/docker
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git apk-manager
+cd apk-manager
 ```
 
-### Krok 2: Zkopíruj docker-compose.yml do Dockge
+### Krok 2: Vytvoř APK adresáře
+
+```bash
+mkdir -p /home/jelly/docker/apk-manager/data/{staging,development,release-candidate,production}
+chmod -R 755 /home/jelly/docker/apk-manager/data
+```
+
+### Krok 3: Zkopíruj docker-compose.yml do Dockge
 
 V Dockge rozhraní:
 1. Klikni na **+ New**
 2. Pojmenuj stack: `apk-manager`
-3. Do editoru vlož tento `docker-compose.yml`:
+3. Do editoru vlož obsah `docker-compose.yml` z klonovaného repozitáře:
 
 ```yaml
 version: "3.8"
@@ -79,17 +87,20 @@ services:
       - apk-network
       - mediaservarr
 
-  # Backend - Node.js API
+  # Backend - Node.js API (ts-node runtime)
   backend:
-    image: "ghcr.io/nemovitostnik-h/droid-deploy-backend:main"
+    image: node:20-alpine
     container_name: apk-manager-backend
     restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npx ts-node src/index.ts"
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "${API_PORT:-3000}:3000"
     volumes:
+      - ./backend:/app
       - ${APK_DATA_PATH:-./data/apk}:/data/apk
     environment:
       - NODE_ENV=production
@@ -146,7 +157,7 @@ networks:
     external: true
 ```
 
-### Krok 3: Nastav Environment Variables
+### Krok 4: Nastav Environment Variables
 
 V Dockge rozhraní, v sekci **Environment Variables**, přidej:
 
@@ -168,7 +179,7 @@ TZ=Europe/Prague
 - `JWT_SECRET` - Změň na náhodný secret (min 32 znaků, použij např. `openssl rand -hex 32`)
 - `API_BASE_URL` - Změň `your-server-ip` na IP adresu tvého serveru, nebo použij Nginx Proxy Manager URL
 
-### Krok 4: Inicializuj databázi
+### Krok 5: Inicializuj databázi
 
 ⚠️ **DŮLEŽITÉ:** První spuštění vyžaduje manuální inicializaci databáze:
 
@@ -183,13 +194,13 @@ docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
 docker exec apk-manager-db psql -U apkmanager -d apkmanager -c "\dt"
 ```
 
-### Krok 5: Deploy!
+### Krok 6: Deploy!
 
 Klikni na **Deploy** v Dockge.
 
 Dockge stáhne všechny potřebné Docker images a spustí kontejnery. První spuštění trvá cca 1-2 minuty.
 
-### Krok 6: První přihlášení
+### Krok 7: První přihlášení
 
 Otevři v prohlížeči: `http://your-server-ip:8580`
 
@@ -199,7 +210,7 @@ Otevři v prohlížeči: `http://your-server-ip:8580`
 
 **⚠️ OKAMŽITĚ změň heslo po prvním přihlášení!**
 
-### Krok 7: Nginx Proxy Manager (Volitelné)
+### Krok 8: Nginx Proxy Manager (Volitelné)
 
 Pokud chceš mít aplikaci dostupnou přes doménu s SSL:
 
@@ -287,27 +298,26 @@ Pokud používáš Portainer místo Dockge:
 Pro pokročilé uživatele - přímé použití Docker Compose CLI:
 
 ```bash
-# 1. Vytvoř pracovní adresář
-mkdir ~/apk-manager && cd ~/apk-manager
+# 1. Naklonuj repozitář
+cd /home/jelly/docker
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git apk-manager
+cd apk-manager
 
-# 2. Stáhni docker-compose.yml
-wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/docker-compose.yml
-
-# 3. Vytvoř .env soubor
-wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/.env.example -O .env
+# 2. Vytvoř .env soubor
+cp .env.example .env
 nano .env  # Uprav hodnoty (POSTGRES_PASSWORD, JWT_SECRET, atd.)
 
-# 4. Vytvoř APK adresáře
-mkdir -p /home/jelly/docker/apk-manager/{staging,development,release-candidate,production}
+# 3. Vytvoř APK adresáře
+mkdir -p data/{staging,development,release-candidate,production}
+chmod -R 755 data
 
-# 5. Spusť stack
+# 4. Spusť stack
 docker-compose up -d
 
-# 6. Inicializuj databázi
-wget https://raw.githubusercontent.com/Nemovitostnik-H/droid-deploy/main/backend/src/db/schema.sql
-docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < schema.sql
+# 5. Inicializuj databázi
+docker exec -i apk-manager-db psql -U apkmanager -d apkmanager < backend/src/db/schema.sql
 
-# 7. Ověř že běží
+# 6. Ověř že běží
 docker-compose ps
 ```
 
@@ -345,17 +355,22 @@ docker-compose ps
 
 ## 🐛 Troubleshooting
 
-### Backend image se nepodaří stáhnout
+### Backend se nespouští
 
-**Problém:** Error "manifest unknown" nebo "not found" při pull
+**Problém:** Backend kontejner restartuje nebo selhává
 
-**Řešení:** Backend image se automaticky builduje přes GitHub Actions při změnách v repozitáři. Pokud image neexistuje:
+**Řešení:** Zkontroluj že máš naklonovaný celý repozitář včetně backend složky:
+```bash
+ls -la /home/jelly/docker/apk-manager/backend
+# Mělo by obsahovat: src/, package.json, tsconfig.json
+```
 
-1. Jdi na GitHub: https://github.com/Nemovitostnik-H/droid-deploy/actions
-2. Vyber workflow "Build and Push Backend Docker Image"
-3. Klikni **Run workflow** → **Run workflow**
-4. Počkej 2-3 minuty než build doběhne
-5. Zkus znovu deploy v Dockge
+Pokud složka chybí:
+```bash
+cd /home/jelly/docker
+rm -rf apk-manager
+git clone https://github.com/Nemovitostnik-H/droid-deploy.git apk-manager
+```
 
 ### Databáze není inicializovaná
 
@@ -425,8 +440,8 @@ Hlavní endpointy:
 - **GitHub Issues**: [https://github.com/Nemovitostnik-H/droid-deploy/issues](https://github.com/Nemovitostnik-H/droid-deploy/issues)
 - **Docker Images**: 
   - Frontend: `ghcr.io/nemovitostnik-h/droid-deploy:main`
-  - Backend: `ghcr.io/nemovitostnik-h/droid-deploy-backend:main`
-- **GitHub Actions**: Backend image se automaticky builduje při změnách v main branch
+  - Backend: `node:20-alpine` (běží TypeScript source přímo s ts-node)
+- **GitHub Actions**: Frontend image se automaticky builduje při změnách v main branch
 
 ---
 
