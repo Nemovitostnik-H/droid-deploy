@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { ApkTable } from "@/components/ApkTable";
 import { PublicationTable } from "@/components/PublicationTable";
@@ -31,6 +32,7 @@ interface PublicationTableItem {
 }
 
 const Index = () => {
+  const { user } = useAuth();
   const [selectedApk, setSelectedApk] = useState<ApkTableItem | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [apkFiles, setApkFiles] = useState<ApkTableItem[]>([]);
@@ -112,14 +114,9 @@ const Index = () => {
     }
   };
 
-  // Initial scan and load
+  // Auto-scan every 60 seconds only when user is authenticated
   useEffect(() => {
-    // Initial scan and load data
-    const initialLoad = async () => {
-      await handleScan();
-      await loadPublications();
-    };
-    initialLoad();
+    if (!user) return;
 
     // Set up auto-scan every 60 seconds
     const interval = setInterval(async () => {
@@ -129,7 +126,7 @@ const Index = () => {
 
     // Cleanup interval on unmount
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const handlePublish = (apk: ApkTableItem) => {
     setSelectedApk(apk);
