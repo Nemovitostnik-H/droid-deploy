@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -6,6 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,62 +19,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlatformBadge } from "./PlatformBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ShieldAlert } from "lucide-react";
-
-interface ApkFile {
-  id: string;
-  name: string;
-  version: string;
-  build: string;
-}
+import { ShieldAlert, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 interface PublishDialogProps {
-  apk: ApkFile | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: (platform: string) => void;
+  apkId: string;
+  apkName: string;
 }
 
-export const PublishDialog = ({
-  apk,
-  open,
-  onOpenChange,
-  onConfirm,
-}: PublishDialogProps) => {
+export const PublishDialog = ({ apkId, apkName }: PublishDialogProps) => {
+  const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<string>("");
-  const { user } = useAuth();
+  const { hasRole } = useAuth();
+  const queryClient = useQueryClient();
 
-  const canPublishToProduction = user?.role === 'admin';
+  const canPublishToProduction = hasRole(['admin']);
+
+  const publishMutation = useMutation({
+    mutationFn: async (selectedPlatform: string) => {
+      const { data, error } = await supabase.functions.invoke('publish-apk', {
+        body: { 
+          apk_id: apkId, 
+          platform: selectedPlatform 
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("APK byl úspěšně publikován");
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      handleClose();
+    },
+    onError: (error: Error) => {
+      toast.error(`Chyba při publikování: ${error.message}`);
+    }
+  });
 
   const handleConfirm = () => {
     if (platform) {
-      onConfirm(platform);
-      setPlatform("");
+      publishMutation.mutate(platform);
     }
   };
 
+  const handleClose = () => {
+    setPlatform("");
+    setOpen(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="gap-2">
+          <Upload className="h-4 w-4" />
+          Publikovat
+        </Button>
+      </DialogTrigger>
       <DialogContent className="bg-card border-border">
         <DialogHeader>
           <DialogTitle>Publikovat APK</DialogTitle>
           <DialogDescription>
-            Vyberte platformu pro publikaci aplikace {apk?.name}
+            Vyberte platformu pro publikaci aplikace {apkName}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Verze:</span> {apk?.version}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Build:</span>{" "}
-              <span className="font-mono">{apk?.build}</span>
-            </p>
-          </div>
           <div className="space-y-2">
             <Label htmlFor="platform">Cílová platforma</Label>
             <Select value={platform} onValueChange={setPlatform}>
@@ -84,7 +98,7 @@ export const PublishDialog = ({
                     Development
                   </div>
                 </SelectItem>
-                <SelectItem value="release_candidate">
+                <SelectItem value="release-candidate">
                   <div className="flex items-center gap-2">
                     Release Candidate
                   </div>
@@ -107,11 +121,11 @@ export const PublishDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleClose} disabled={publishMutation.isPending}>
             Zrušit
           </Button>
-          <Button onClick={handleConfirm} disabled={!platform}>
-            Publikovat
+          <Button onClick={handleConfirm} disabled={!platform || publishMutation.isPending}>
+            {publishMutation.isPending ? "Publikuji..." : "Publikovat"}
           </Button>
         </DialogFooter>
       </DialogContent>

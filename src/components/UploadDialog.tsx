@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -6,38 +8,67 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Upload, File, X } from 'lucide-react';
+import { toast } from "sonner";
 
-interface UploadDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onUpload: (file: File) => void;
-  isUploading: boolean;
-}
-
-export function UploadDialog({
-  open,
-  onOpenChange,
-  onUpload,
-  isUploading,
-}: UploadDialogProps) {
+export function UploadDialog() {
+  const [open, setOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      // Upload to Supabase Storage
+      const filePath = `staging/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('apk-files')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Create DB record
+      const { error: dbError } = await supabase
+        .from('apk_files')
+        .insert({
+          name: file.name,
+          package_name: 'com.example.app', // TODO: Extract from APK
+          version: '1.0.0', // TODO: Extract from APK
+          version_code: 1, // TODO: Extract from APK
+          storage_path: filePath,
+          file_size: file.size,
+        });
+
+      if (dbError) throw dbError;
+    },
+    onSuccess: () => {
+      toast.success("APK soubor byl úspěšně nahrán");
+      queryClient.invalidateQueries({ queryKey: ['apk-files'] });
+      handleClose();
+    },
+    onError: (error: Error) => {
+      toast.error(`Chyba při nahrávání: ${error.message}`);
+    }
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.name.endsWith('.apk')) {
       setSelectedFile(file);
     } else {
-      alert('Prosím vyberte APK soubor');
+      toast.error('Prosím vyberte APK soubor');
     }
   };
 
   const handleUpload = () => {
     if (selectedFile) {
-      onUpload(selectedFile);
+      uploadMutation.mutate(selectedFile);
     }
   };
 
@@ -46,11 +77,17 @@ export function UploadDialog({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    onOpenChange(false);
+    setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Upload className="h-4 w-4 mr-2" />
+          Nahrát APK
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nahrát APK soubor</DialogTitle>
@@ -110,14 +147,14 @@ export function UploadDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+          <Button variant="outline" onClick={handleClose} disabled={uploadMutation.isPending}>
             Zrušit
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={!selectedFile || isUploading}
+            disabled={!selectedFile || uploadMutation.isPending}
           >
-            {isUploading ? 'Nahrávám...' : 'Nahrát'}
+            {uploadMutation.isPending ? 'Nahrávám...' : 'Nahrát'}
           </Button>
         </DialogFooter>
       </DialogContent>
