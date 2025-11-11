@@ -70,18 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('🔐 Attempting login for:', email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ Login error:', error);
         return { success: false, error: error.message };
       }
 
+      console.log('✅ Login successful');
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login exception:', error);
       return { success: false, error: 'Chyba připojení k serveru' };
     }
   };

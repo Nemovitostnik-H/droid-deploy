@@ -14,8 +14,16 @@ declare global {
 const supabaseUrl = window.__ENV__?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = window.__ENV__?.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Debug logging
+console.log('🔍 Supabase ENV Debug:');
+console.log('  window.__ENV__:', window.__ENV__);
+console.log('  VITE_SUPABASE_URL:', supabaseUrl);
+console.log('  VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Loaded' : '❌ Missing');
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  const errorMsg = 'Missing Supabase environment variables. Please check your .env file.';
+  console.error('❌', errorMsg);
+  throw new Error(errorMsg);
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
