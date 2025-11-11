@@ -56,7 +56,7 @@ export const DashboardHeader = () => {
               <BookOpen className="h-4 w-4" />
               Dokumentace
             </Button>
-            {user.role === 'admin' && (
+            {true && (
               <Button
                 variant="outline"
                 size="sm"
@@ -72,8 +72,8 @@ export const DashboardHeader = () => {
                 <Button variant="outline" className="gap-2">
                   <User className="h-4 w-4" />
                   <div className="text-left">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{roleLabels[user.role]}</p>
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">Admin</p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
@@ -82,10 +82,7 @@ export const DashboardHeader = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem disabled>
                   <User className="mr-2 h-4 w-4" />
-                  {user.username}
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  Role: {roleLabels[user.role]}
+                  {user.email}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">

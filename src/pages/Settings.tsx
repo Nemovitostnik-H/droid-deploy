@@ -1,133 +1,78 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { DashboardHeader } from "@/components/DashboardHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { settingsApi, Setting } from "@/services/api";
-import { Loader2, Save, FolderOpen } from "lucide-react";
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase, AppSetting } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { DashboardHeader } from '@/components/DashboardHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { Save, Loader2 } from 'lucide-react';
 
 export default function Settings() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [settings, setSettings] = useState<Setting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { hasRole } = useAuth();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [settings, setSettings] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      setLoading(true);
-      const response = await settingsApi.list();
-      setSettings(response.settings);
+  const { data: appSettings, isLoading } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .order('key');
       
-      // Initialize form data
-      const data: Record<string, string> = {};
-      response.settings.forEach(setting => {
-        data[setting.key] = setting.value;
+      if (error) throw error;
+      
+      const settingsObj: Record<string, string> = {};
+      data.forEach((setting: AppSetting) => {
+        settingsObj[setting.key] = setting.value;
       });
-      setFormData(data);
-    } catch (error: any) {
-      toast({
-        title: "Chyba",
-        description: error.message || "Nepodařilo se načíst nastavení",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      setSettings(settingsObj);
+      
+      return data as AppSetting[];
     }
+  });
+
+  const handleSettingChange = (key: string, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
+    if (!hasRole(['admin'])) {
+      toast.error('Nemáte oprávnění upravovat nastavení');
+      return;
+    }
+
+    setSaving(true);
     try {
-      setSaving(true);
-      
-      // Update all changed settings
-      const updates = Object.keys(formData).map(key => 
-        settingsApi.update(key, formData[key])
-      );
-      
-      await Promise.all(updates);
-      
-      toast({
-        title: "Uloženo",
-        description: "Nastavení byla úspěšně aktualizována",
-      });
-      
-      await loadSettings();
-    } catch (error: any) {
-      toast({
-        title: "Chyba",
-        description: error.message || "Nepodařilo se uložit nastavení",
-        variant: "destructive",
-      });
+      for (const [key, value] of Object.entries(settings)) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq('key', key);
+
+        if (error) throw error;
+      }
+
+      toast.success('Nastavení bylo úspěšně uloženo');
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    } catch (error) {
+      console.error('Save settings error:', error);
+      toast.error('Chyba při ukládání nastavení');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChange = (key: string, value: string) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-  };
-
-  const getSettingLabel = (key: string): string => {
-    const labels: Record<string, string> = {
-      'apk_directory': 'Zdrojový APK adresář',
-      'apk_staging_directory': 'Staging adresář (pro nahrávání)',
-      'platform_dev_directory': 'Development publikační adresář',
-      'platform_rc_directory': 'Release Candidate publikační adresář',
-      'platform_prod_directory': 'Production publikační adresář',
-      'backend_port': 'Backend Port',
-      'jwt_secret': 'JWT Secret',
-      'jwt_expires_in': 'JWT Expirace',
-    };
-    return labels[key] || key;
-  };
-
-  const getSettingDescription = (key: string): string => {
-    const descriptions: Record<string, string> = {
-      'apk_directory': 'Hlavní adresář, kde backend hledá APK soubory k načtení do systému',
-      'apk_staging_directory': 'Dočasný adresář pro nahrávané APK soubory před importem',
-      'platform_dev_directory': 'Cílový adresář pro publikaci APK na vývojové prostředí',
-      'platform_rc_directory': 'Cílový adresář pro publikaci APK na release candidate prostředí',
-      'platform_prod_directory': 'Cílový adresář pro publikaci APK na produkční prostředí',
-      'backend_port': 'Port na kterém běží backend server (výchozí: 3001)',
-      'jwt_secret': 'Tajný klíč pro JWT tokeny (doporučeno minimálně 32 znaků)',
-      'jwt_expires_in': 'Doba expirace JWT tokenů (např. "24h", "7d")',
-    };
-    return descriptions[key] || '';
-  };
-
-  const isPasswordField = (key: string): boolean => {
-    return key.includes('secret') || key.includes('password');
-  };
-
-  const getDirectoryCategory = (key: string): 'source' | 'publication' | 'other' => {
-    if (key === 'apk_directory' || key === 'apk_staging_directory') {
-      return 'source';
-    }
-    if (key.includes('platform_')) {
-      return 'publication';
-    }
-    return 'other';
-  };
-
-  if (user?.role !== 'admin') {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <DashboardHeader />
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">Pouze administrátoři mají přístup k nastavení.</p>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -137,154 +82,52 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Nastavení systému</h1>
-          <p className="text-muted-foreground mt-2">
-            Konfigurace adresářů a nastavení APK Manageru
-          </p>
-        </div>
-
-        {loading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
-                APK Adresáře
-              </CardTitle>
-              <CardDescription>
-                Nakonfigurujte cesty k adresářům pro ukládání APK souborů. Tyto cesty musí existovat v Docker kontejneru.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Source Directory Settings */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Zdrojové adresáře</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Adresáře, kde systém hledá a ukládá APK soubory
-                  </p>
+      <main className="container mx-auto px-4 py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Nastavení aplikace</CardTitle>
+            <CardDescription>
+              Konfigurace adresářů pro APK soubory
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              {appSettings?.map((setting) => (
+                <div key={setting.key} className="space-y-2">
+                  <Label htmlFor={setting.key}>{setting.key}</Label>
+                  <Input
+                    id={setting.key}
+                    value={settings[setting.key] || ''}
+                    onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                    disabled={!hasRole(['admin'])}
+                  />
+                  {setting.description && (
+                    <p className="text-sm text-muted-foreground">{setting.description}</p>
+                  )}
                 </div>
-                {settings
-                  .filter(s => getDirectoryCategory(s.key) === 'source')
-                  .map((setting) => (
-                    <div key={setting.key} className="space-y-2">
-                      <Label htmlFor={setting.key}>
-                        {getSettingLabel(setting.key)}
-                      </Label>
-                      <Input
-                        id={setting.key}
-                        type="text"
-                        value={formData[setting.key] || ''}
-                        onChange={(e) => handleChange(setting.key, e.target.value)}
-                        placeholder={setting.value}
-                      />
-                      {(setting.description || getSettingDescription(setting.key)) && (
-                        <p className="text-sm text-muted-foreground">
-                          {setting.description || getSettingDescription(setting.key)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-              </div>
+              ))}
+            </div>
 
-              {/* Publication Directories */}
-              <div className="space-y-4 pt-4 border-t">
-                <div>
-                  <h3 className="text-lg font-semibold">Publikační destinace</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Cílové adresáře, kam se kopírují APK soubory při publikaci
-                  </p>
-                </div>
-                {settings
-                  .filter(s => getDirectoryCategory(s.key) === 'publication')
-                  .map((setting) => (
-                    <div key={setting.key} className="space-y-2">
-                      <Label htmlFor={setting.key}>
-                        {getSettingLabel(setting.key)}
-                      </Label>
-                      <Input
-                        id={setting.key}
-                        type="text"
-                        value={formData[setting.key] || ''}
-                        onChange={(e) => handleChange(setting.key, e.target.value)}
-                        placeholder={setting.value}
-                      />
-                      {(setting.description || getSettingDescription(setting.key)) && (
-                        <p className="text-sm text-muted-foreground">
-                          {setting.description || getSettingDescription(setting.key)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-              </div>
-
-              {/* Server Settings */}
-              {settings.some(s => !s.key.includes('directory')) && (
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-lg font-semibold">Serverové nastavení</h3>
-                  {settings
-                    .filter(s => !s.key.includes('directory'))
-                    .map((setting) => (
-                      <div key={setting.key} className="space-y-2">
-                        <Label htmlFor={setting.key}>
-                          {getSettingLabel(setting.key)}
-                        </Label>
-                        <Input
-                          id={setting.key}
-                          type={isPasswordField(setting.key) ? "password" : "text"}
-                          value={formData[setting.key] || ''}
-                          onChange={(e) => handleChange(setting.key, e.target.value)}
-                          placeholder={setting.value}
-                        />
-                        {(setting.description || getSettingDescription(setting.key)) && (
-                          <p className="text-sm text-muted-foreground">
-                            {setting.description || getSettingDescription(setting.key)}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              <div className="pt-4 flex gap-2">
+            {hasRole(['admin']) && (
+              <div className="flex justify-end">
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Ukládání...
+                      Ukládám...
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Uložit změny
+                      Uložit nastavení
                     </>
                   )}
                 </Button>
-                <Button variant="outline" onClick={loadSettings} disabled={saving}>
-                  Obnovit
-                </Button>
               </div>
-
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">⚠️ Důležité poznámky:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li>Adresáře musí existovat v Docker kontejneru backendu</li>
-                  <li>Po změně adresářů může být nutný restart backend kontejneru</li>
-                  <li>Ujistěte se, že jsou adresáře správně namountované v docker-compose.yml</li>
-                  <li>Backend musí mít read-write oprávnění k těmto adresářům</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
