@@ -6,6 +6,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     container_name: apk-manager-frontend
     restart: unless-stopped
     ports:
