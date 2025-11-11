@@ -48,8 +48,20 @@ if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
     echo "❌ Chybí povinné proměnné v .env!"
     echo ""
     echo "📝 .env musí obsahovat:"
-    echo "   VITE_SUPABASE_URL"
-    echo "   VITE_SUPABASE_ANON_KEY"
+    echo "   VITE_SUPABASE_URL=http://localhost:8000"
+    echo "   VITE_SUPABASE_ANON_KEY=tvůj-anon-key"
+    echo "   POSTGRES_PASSWORD=tvoje-postgres-heslo (pro CLI linkování)"
+    exit 1
+fi
+
+if [ -z "$POSTGRES_PASSWORD" ]; then
+    echo "⚠️  POSTGRES_PASSWORD není nastavený v .env!"
+    echo ""
+    echo "📝 Pro self-hosted Supabase potřebuješ database credentials:"
+    echo "   POSTGRES_PASSWORD=tvoje-postgres-heslo"
+    echo "   POSTGRES_HOST=localhost"
+    echo "   POSTGRES_PORT=5432"
+    echo ""
     exit 1
 fi
 
@@ -61,14 +73,24 @@ echo ""
 if ! supabase status &> /dev/null; then
     echo "🔗 Linkuji Supabase projekt..."
     
-    if [ -n "$SUPABASE_PROJECT_REF" ]; then
-        supabase link --project-ref "$SUPABASE_PROJECT_REF"
-        echo "✅ Projekt nalinkován"
+    # Pro self-hosted Supabase použij --db-url
+    DB_URL="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}"
+    
+    echo "   Database: ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}"
+    echo ""
+    
+    if supabase link --db-url "$DB_URL"; then
+        echo "✅ Projekt nalinkován přes database URL"
     else
-        echo "⚠️  SUPABASE_PROJECT_REF není nastavený v .env"
+        echo "❌ Chyba při linkování"
         echo ""
-        echo "📝 Spusť manuálně:"
-        echo "   supabase link --project-ref apk-manager"
+        echo "📝 Zkontroluj:"
+        echo "   1. Je Supabase database dostupná?"
+        echo "   2. Je POSTGRES_PASSWORD správně?"
+        echo "   3. Běží PostgreSQL na ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}?"
+        echo ""
+        echo "📝 Můžeš zkusit manuálně:"
+        echo "   supabase link --db-url \"postgresql://postgres:heslo@localhost:5432/postgres\""
         exit 1
     fi
 else
