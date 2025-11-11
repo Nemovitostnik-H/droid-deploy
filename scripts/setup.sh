@@ -69,61 +69,50 @@ echo "✅ Environment variables načteny"
 echo "   URL: $VITE_SUPABASE_URL"
 echo ""
 
-# Kontrola linkování projektu
-if ! supabase status &> /dev/null; then
-    echo "🔗 Linkuji Supabase projekt..."
-    
-    # Pro self-hosted Supabase použij --db-url
-    DB_URL="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}"
-    
-    echo "   Database: ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}"
-    echo ""
-    
-    if supabase link --db-url "$DB_URL"; then
-        echo "✅ Projekt nalinkován přes database URL"
-    else
-        echo "❌ Chyba při linkování"
-        echo ""
-        echo "📝 Zkontroluj:"
-        echo "   1. Je Supabase database dostupná?"
-        echo "   2. Je POSTGRES_PASSWORD správně?"
-        echo "   3. Běží PostgreSQL na ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}?"
-        echo ""
-        echo "📝 Můžeš zkusit manuálně:"
-        echo "   supabase link --db-url \"postgresql://postgres:heslo@localhost:5432/postgres\""
-        exit 1
-    fi
-else
-    echo "✅ Projekt už je nalinkovaný"
-fi
+# Pro self-hosted Supabase použijeme přímé DB připojení
+DB_URL="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}"
 
+echo "🔗 Připojuji k databázi..."
+echo "   Database: ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}"
 echo ""
 
-# Aplikace migrations
+# Aplikace migrations pomocí přímého DB URL
 echo "📦 Aplikuji database migrations..."
 echo "   Vytvářím tabulky, RLS policies, storage bucket..."
 echo ""
 
-if supabase db push; then
+if supabase db push --db-url "$DB_URL"; then
     echo "✅ Migrations úspěšně aplikovány"
 else
     echo "❌ Chyba při aplikaci migrations"
+    echo ""
+    echo "📝 Zkontroluj:"
+    echo "   1. Je Supabase database dostupná na ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}?"
+    echo "   2. Je POSTGRES_PASSWORD správně? ($POSTGRES_PASSWORD)"
+    echo "   3. Má uživatel $POSTGRES_USER práva k databázi?"
+    echo ""
+    echo "📝 Můžeš zkusit manuálně:"
+    echo "   psql \"$DB_URL\" -c '\\dt'"
     exit 1
 fi
 
 echo ""
 
-# Deploy Edge Functions
-echo "🚀 Deployuji Edge Functions..."
-echo "   Function: publish-apk"
+# Edge Functions pro self-hosted Supabase
+echo "📦 Edge Functions setup..."
 echo ""
-
-if supabase functions deploy publish-apk; then
-    echo "✅ Edge Functions úspěšně deploynuty"
-else
-    echo "❌ Chyba při deployi Edge Functions"
-    exit 1
-fi
+echo "⚠️  Pro self-hosted Supabase jsou Edge Functions v Docker volumes:"
+echo ""
+echo "📝 Zkopíruj Edge Functions manuálně:"
+echo "   1. Najdi volumes složku tvého Supabase stacku"
+echo "   2. Zkopíruj: supabase/functions/publish-apk/ → volumes/functions/publish-apk/"
+echo "   3. Restartuj functions service:"
+echo "      docker compose restart functions --no-deps"
+echo ""
+echo "📋 Nebo použij tento příkaz (změň cestu k volumes):"
+echo "   cp -r supabase/functions/publish-apk /path/to/supabase/volumes/functions/"
+echo "   cd /path/to/supabase && docker compose restart functions --no-deps"
+echo ""
 
 echo ""
 echo "╔════════════════════════════════════════════════════════╗"
@@ -133,27 +122,31 @@ echo ""
 echo "📋 Co bylo uděláno:"
 echo "   ✅ Database schema (tabulky, RLS policies)"
 echo "   ✅ Storage bucket 'apk-files'"
-echo "   ✅ Edge function 'publish-apk'"
+echo "   ⚠️  Edge functions připraveny ke zkopírování"
 echo "   ✅ Seed data (app_role enum)"
 echo ""
 echo "📋 Další kroky:"
 echo ""
-echo "1️⃣  Vytvoř admin uživatele:"
+echo "1️⃣  Zkopíruj Edge Functions do Supabase volumes:"
+echo "   cp -r supabase/functions/publish-apk /path/to/supabase/volumes/functions/"
+echo "   docker compose restart functions --no-deps"
+echo ""
+echo "2️⃣  Vytvoř admin uživatele:"
 echo "   curl -X POST 'http://localhost:8000/auth/v1/signup' \\"
 echo "     -H 'apikey: $VITE_SUPABASE_ANON_KEY' \\"
 echo "     -H 'Content-Type: application/json' \\"
 echo "     -d '{\"email\":\"admin@apkmanager.local\",\"password\":\"admin123\"}'"
 echo ""
-echo "2️⃣  Přiřaď admin roli (přes Supabase Studio → SQL Editor):"
+echo "3️⃣  Přiřaď admin roli (přes Supabase Studio → SQL Editor):"
 echo "   INSERT INTO public.user_roles (user_id, role)"
 echo "   SELECT id, 'admin'::app_role FROM auth.users"
 echo "   WHERE email = 'admin@apkmanager.local';"
 echo ""
-echo "3️⃣  Spusť Docker container:"
+echo "4️⃣  Spusť Docker container:"
 echo "   docker-compose pull"
 echo "   docker-compose up -d"
 echo ""
-echo "4️⃣  Přihlaš se do aplikace:"
+echo "5️⃣  Přihlaš se do aplikace:"
 echo "   URL: http://localhost:3000"
 echo "   Email: admin@apkmanager.local"
 echo "   Password: admin123"
