@@ -3,7 +3,9 @@ version: "3.8"
 services:
   # APK Manager Frontend - React Web Interface
   apk-manager-frontend:
-    image: "ghcr.io/nemovitostnik-h/droid-deploy:main"
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: apk-manager-frontend
     restart: unless-stopped
     ports:
