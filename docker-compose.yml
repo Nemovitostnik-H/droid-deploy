@@ -10,7 +10,7 @@ services:
       - "${APP_PORT:-3000}:80"
     environment:
       # DŮLEŽITÉ: Změň na URL tvého Supabase serveru
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-http://localhost:8000}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-http://supabase-kong:8000}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
       - TZ=${TZ:-Europe/Prague}
     healthcheck:
@@ -20,8 +20,8 @@ services:
       start_period: 10s
       retries: 3
     networks:
-      - apk-network
+      - supabase_default
 
 networks:
-  apk-network:
-    driver: bridge
+  supabase_default:
+    external: true

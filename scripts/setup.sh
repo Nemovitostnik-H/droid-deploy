@@ -10,21 +10,17 @@ echo "║        APK Manager - Supabase Setup Script            ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 
-# Kontrola Supabase CLI
-if ! command -v supabase &> /dev/null; then
-    echo "❌ Supabase CLI není nainstalované!"
-    echo ""
-    echo "📥 Instalace:"
-    echo "   macOS:   brew install supabase/tap/supabase"
-    echo "   Linux:   curl -fsSL https://supabase.com/install.sh | sh"
-    echo "   Windows: scoop install supabase"
-    echo ""
-    echo "📖 Více info: https://supabase.com/docs/guides/cli/getting-started"
-    exit 1
+# Zjištění dostupnosti Supabase CLI (nevyžadujeme ho nutně – použijeme dockerizovanou variantu)
+HAS_LOCAL_CLI=0
+if command -v supabase &> /dev/null; then
+    HAS_LOCAL_CLI=1
+    echo "✅ Supabase CLI je nainstalované (lokálně)"
+else
+    echo "ℹ️ Supabase CLI lokálně nenalezeno – použiji dockerizovanou variantu (doporučeno)"
 fi
 
-echo "✅ Supabase CLI je nainstalované"
 echo ""
+
 
 # Kontrola .env souboru
 if [ ! -f .env ]; then
@@ -69,31 +65,55 @@ echo "✅ Environment variables načteny"
 echo "   URL: $VITE_SUPABASE_URL"
 echo ""
 
-# Pro self-hosted Supabase použijeme přímé DB připojení
-DB_URL="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}"
+# Příprava DB připojení
+DB_HOST="${POSTGRES_HOST:-localhost}"
+DB_PORT="${POSTGRES_PORT:-5432}"
+DB_NAME="${POSTGRES_DB:-postgres}"
+DB_USER="${POSTGRES_USER:-postgres}"
+DB_URL="postgresql://${DB_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+
+# Varianta pro Docker síť (supabase_default → host 'db')
+DB_HOST_IN_NETWORK="${DB_HOST_IN_NETWORK:-db}"
+DOCKER_DB_URL="postgresql://${DB_USER}:${POSTGRES_PASSWORD}@${DB_HOST_IN_NETWORK}:${DB_PORT}/${DB_NAME}"
 
 echo "🔗 Připojuji k databázi..."
-echo "   Database: ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}"
+echo "   Host (lokální): ${DB_HOST}:${DB_PORT}"
+echo "   Host (docker síť): ${DB_HOST_IN_NETWORK}:${DB_PORT}"
 echo ""
 
-# Aplikace migrations pomocí přímého DB URL
+# Aplikace migrations (preferujeme dockerizovaný CLI v síti supabase_default)
 echo "📦 Aplikuji database migrations..."
-echo "   Vytvářím tabulky, RLS policies, storage bucket..."
 echo ""
 
-if supabase db push --db-url "$DB_URL"; then
-    echo "✅ Migrations úspěšně aplikovány"
-else
-    echo "❌ Chyba při aplikaci migrations"
-    echo ""
-    echo "📝 Zkontroluj:"
-    echo "   1. Je Supabase database dostupná na ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}?"
-    echo "   2. Je POSTGRES_PASSWORD správně? ($POSTGRES_PASSWORD)"
-    echo "   3. Má uživatel $POSTGRES_USER práva k databázi?"
-    echo ""
-    echo "📝 Můžeš zkusit manuálně:"
-    echo "   psql \"$DB_URL\" -c '\\dt'"
+USE_DOCKER_CLI=0
+if command -v docker &>/dev/null && docker network inspect supabase_default >/dev/null 2>&1; then
+  USE_DOCKER_CLI=1
+fi
+
+if [ "$USE_DOCKER_CLI" -eq 1 ]; then
+  echo "🚀 Používám dockerizovaný Supabase CLI v síti 'supabase_default'"
+  if docker run --rm --network supabase_default -v "$PWD":/workspace -w /workspace supabase/cli:latest db push --db-url "$DOCKER_DB_URL"; then
+    echo "✅ Migrations úspěšně aplikovány (docker CLI)"
+  else
+    echo "❌ Chyba při aplikaci migrations (docker CLI)"
+    echo "   Ověř, že běží Supabase stack a síť 'supabase_default' existuje."
     exit 1
+  fi
+else
+  if [ "$HAS_LOCAL_CLI" -eq 1 ]; then
+    echo "ℹ️ Používám lokální Supabase CLI"
+    if supabase db push --db-url "$DB_URL"; then
+      echo "✅ Migrations úspěšně aplikovány (lokální CLI)"
+    else
+      echo "❌ Chyba při aplikaci migrations (lokální CLI)"
+      echo "   Zvaž použití Docker: 'docker network ls' a ověř existenci supabase_default"
+      exit 1
+    fi
+  else
+    echo "❌ Supabase CLI není dostupné a docker síť 'supabase_default' nebyla nalezena."
+    echo "   Nainstaluj CLI nebo spusť tento script na stroji, kde běží Docker se sítí 'supabase_default'."
+    exit 1
+  fi
 fi
 
 echo ""
