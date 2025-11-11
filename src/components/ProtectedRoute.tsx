@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, hasRole } = useAuth();
 
   if (isLoading) {
     return (
@@ -22,17 +22,20 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRoles && !requiredRoles.includes(user.role)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Přístup odepřen</h2>
-          <p className="text-muted-foreground">
-            Nemáte oprávnění pro přístup k této stránce.
-          </p>
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRequiredRole = hasRole(requiredRoles as any[]);
+    if (!hasRequiredRole) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-bold">Přístup odepřen</h2>
+            <p className="text-muted-foreground">
+              Nemáte oprávnění pro přístup k této stránce.
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return <>{children}</>;
