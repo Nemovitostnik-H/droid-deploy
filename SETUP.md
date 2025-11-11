@@ -43,7 +43,7 @@ cd apk-manager
 
 ```bash
 # Zkopíruj env template
-cp .env.supabase.example .env
+cp .env.example .env
 
 # Vygeneruj JWT secret (64 znaků hex)
 openssl rand -hex 32
