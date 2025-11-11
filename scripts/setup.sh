@@ -1,109 +1,140 @@
 #!/bin/bash
+
+# APK Manager Setup Script
+# Tento script aplikuje database migrations a deployuje edge functions
+
 set -e
 
-echo "🚀 APK Manager Deployment Script"
-echo "=================================="
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║        APK Manager - Supabase Setup Script            ║"
+echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 
-# Check if Supabase CLI is installed
+# Kontrola Supabase CLI
 if ! command -v supabase &> /dev/null; then
-    echo "❌ Supabase CLI není nainstalované"
-    echo "   Nainstaluj: https://supabase.com/docs/guides/cli"
-    echo "   nebo: brew install supabase/tap/supabase (macOS)"
-    echo "   nebo: scoop install supabase (Windows)"
+    echo "❌ Supabase CLI není nainstalované!"
+    echo ""
+    echo "📥 Instalace:"
+    echo "   macOS:   brew install supabase/tap/supabase"
+    echo "   Linux:   curl -fsSL https://supabase.com/install.sh | sh"
+    echo "   Windows: scoop install supabase"
+    echo ""
+    echo "📖 Více info: https://supabase.com/docs/guides/cli/getting-started"
     exit 1
 fi
 
-echo "✅ Supabase CLI found: $(supabase --version)"
+echo "✅ Supabase CLI je nainstalované"
 echo ""
 
-# Check if .env file exists
+# Kontrola .env souboru
 if [ ! -f .env ]; then
-    echo "❌ .env soubor neexistuje"
-    echo "   Zkopíruj .env.example a vyplň hodnoty:"
-    echo "   cp .env.example .env"
+    echo "❌ .env soubor nenalezen!"
+    echo ""
+    echo "📝 Vytvoř .env soubor:"
+    echo "   cp .env.production .env"
+    echo ""
+    echo "📋 Potřebné proměnné:"
+    echo "   VITE_SUPABASE_URL=http://localhost:8000"
+    echo "   VITE_SUPABASE_ANON_KEY=tvůj-anon-key"
+    echo "   SUPABASE_PROJECT_REF=apk-manager"
     exit 1
 fi
 
-echo "✅ .env file found"
-echo ""
-
-# Load environment variables
-set -a
+# Načtení environment variables
 source .env
-set +a
 
-# Check required variables
-if [ -z "$VITE_SUPABASE_URL" ]; then
-    echo "❌ VITE_SUPABASE_URL není nastaven v .env"
+# Validace proměnných
+if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+    echo "❌ Chybí povinné proměnné v .env!"
+    echo ""
+    echo "📝 .env musí obsahovat:"
+    echo "   VITE_SUPABASE_URL"
+    echo "   VITE_SUPABASE_ANON_KEY"
     exit 1
 fi
 
-if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-    echo "❌ VITE_SUPABASE_ANON_KEY není nastaven v .env"
-    exit 1
-fi
-
-echo "✅ Environment variables validated"
+echo "✅ Environment variables načteny"
+echo "   URL: $VITE_SUPABASE_URL"
 echo ""
 
-# Check if we need to link project
-if [ ! -f "supabase/.temp/project-ref" ]; then
-    echo "📦 Linking to Supabase project..."
-    echo "   URL: $VITE_SUPABASE_URL"
+# Kontrola linkování projektu
+if ! supabase status &> /dev/null; then
+    echo "🔗 Linkuji Supabase projekt..."
     
-    # Try to link
     if [ -n "$SUPABASE_PROJECT_REF" ]; then
-        supabase link --project-ref "$SUPABASE_PROJECT_REF" || {
-            echo "⚠️  Auto-link failed, please run manually:"
-            echo "   supabase link"
-            exit 1
-        }
+        supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        echo "✅ Projekt nalinkován"
     else
-        echo "⚠️  SUPABASE_PROJECT_REF not set, please link manually:"
-        echo "   supabase link"
+        echo "⚠️  SUPABASE_PROJECT_REF není nastavený v .env"
+        echo ""
+        echo "📝 Spusť manuálně:"
+        echo "   supabase link --project-ref apk-manager"
         exit 1
     fi
+else
+    echo "✅ Projekt už je nalinkovaný"
 fi
 
-echo "✅ Project linked"
 echo ""
 
-# Run database migrations
-echo "🗄️  Running database migrations..."
-supabase db push || {
-    echo "❌ Database migration failed"
-    echo "   Check your database connection and credentials"
-    exit 1
-}
+# Aplikace migrations
+echo "📦 Aplikuji database migrations..."
+echo "   Vytvářím tabulky, RLS policies, storage bucket..."
+echo ""
 
-echo "✅ Database migrations completed"
+if supabase db push; then
+    echo "✅ Migrations úspěšně aplikovány"
+else
+    echo "❌ Chyba při aplikaci migrations"
+    exit 1
+fi
+
 echo ""
 
 # Deploy Edge Functions
-echo "⚡ Deploying Edge Functions..."
-supabase functions deploy publish-apk || {
-    echo "⚠️  Edge function deployment failed"
-    echo "   You may need to deploy manually or check function code"
-}
-
-echo "✅ Edge Functions deployed"
+echo "🚀 Deployuji Edge Functions..."
+echo "   Function: publish-apk"
 echo ""
 
-echo "================================================"
-echo "✅ Deployment completed successfully!"
-echo "================================================"
+if supabase functions deploy publish-apk; then
+    echo "✅ Edge Functions úspěšně deploynuty"
+else
+    echo "❌ Chyba při deployi Edge Functions"
+    exit 1
+fi
+
 echo ""
-echo "📝 Next steps:"
-echo "   1. Build and run Docker:"
-echo "      docker-compose up -d --build"
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║           ✅ Setup dokončen úspěšně!                  ║"
+echo "╚════════════════════════════════════════════════════════╝"
 echo ""
-echo "   2. Access app:"
-echo "      http://localhost:${APP_PORT:-3000}"
+echo "📋 Co bylo uděláno:"
+echo "   ✅ Database schema (tabulky, RLS policies)"
+echo "   ✅ Storage bucket 'apk-files'"
+echo "   ✅ Edge function 'publish-apk'"
+echo "   ✅ Seed data (app_role enum)"
 echo ""
-echo "   3. Login with default admin:"
-echo "      Email: admin@apkmanager.local"
-echo "      Password: admin123"
+echo "📋 Další kroky:"
 echo ""
-echo "   ⚠️  IMPORTANT: Change admin password after first login!"
+echo "1️⃣  Vytvoř admin uživatele:"
+echo "   curl -X POST 'http://localhost:8000/auth/v1/signup' \\"
+echo "     -H 'apikey: $VITE_SUPABASE_ANON_KEY' \\"
+echo "     -H 'Content-Type: application/json' \\"
+echo "     -d '{\"email\":\"admin@apkmanager.local\",\"password\":\"admin123\"}'"
+echo ""
+echo "2️⃣  Přiřaď admin roli (přes Supabase Studio → SQL Editor):"
+echo "   INSERT INTO public.user_roles (user_id, role)"
+echo "   SELECT id, 'admin'::app_role FROM auth.users"
+echo "   WHERE email = 'admin@apkmanager.local';"
+echo ""
+echo "3️⃣  Spusť Docker container:"
+echo "   docker-compose pull"
+echo "   docker-compose up -d"
+echo ""
+echo "4️⃣  Přihlaš se do aplikace:"
+echo "   URL: http://localhost:3000"
+echo "   Email: admin@apkmanager.local"
+echo "   Password: admin123"
+echo ""
+echo "⚠️  Změň heslo po prvním přihlášení!"
 echo ""
