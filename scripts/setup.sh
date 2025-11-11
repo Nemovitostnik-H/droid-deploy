@@ -92,12 +92,25 @@ fi
 
 if [ "$USE_DOCKER_CLI" -eq 1 ]; then
   echo "🚀 Používám dockerizovaný Supabase CLI v síti 'supabase_default'"
-  if docker run --rm --network supabase_default -v "$PWD":/workspace -w /workspace supabase/cli:latest db push --db-url "$DOCKER_DB_URL"; then
+  DOCKER_CLI_IMAGE="${DOCKER_CLI_IMAGE:-ghcr.io/supabase/cli:latest}"
+  if docker run --rm --network supabase_default -v "$PWD":/workspace -w /workspace "$DOCKER_CLI_IMAGE" db push --db-url "$DOCKER_DB_URL"; then
     echo "✅ Migrations úspěšně aplikovány (docker CLI)"
   else
-    echo "❌ Chyba při aplikaci migrations (docker CLI)"
-    echo "   Ověř, že běží Supabase stack a síť 'supabase_default' existuje."
-    exit 1
+    echo "⚠️  Docker CLI selhalo – zkusím lokální CLI (pokud je dostupné)"
+    if [ "$HAS_LOCAL_CLI" -eq 1 ]; then
+      if supabase db push --db-url "$DB_URL"; then
+        echo "✅ Migrations úspěšně aplikovány (lokální CLI - fallback)"
+      else
+        echo "❌ Chyba při aplikaci migrations i s lokálním CLI"
+        echo "   Zvaž: 'docker pull ghcr.io/supabase/cli:latest' a ověř síť 'supabase_default'"
+        exit 1
+      fi
+    else
+      echo "❌ Chyba při aplikaci migrations (docker CLI) a lokální CLI není k dispozici"
+      echo "   Ověř, že běží Supabase stack, síť 'supabase_default' existuje a image je dostupný:"
+      echo "   docker pull ghcr.io/supabase/cli:latest"
+      exit 1
+    fi
   fi
 else
   if [ "$HAS_LOCAL_CLI" -eq 1 ]; then
