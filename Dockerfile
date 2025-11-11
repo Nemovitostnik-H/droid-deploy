@@ -12,13 +12,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build-time env for Vite (injected via build args)
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-
-# Build the application
+# Build the application (without ENV - will be injected at runtime)
 RUN npm run build
 
 # Production stage
@@ -30,6 +24,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Expose port 80
 EXPOSE 80
 
@@ -37,4 +35,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use custom entrypoint to generate env-config.js at runtime
+ENTRYPOINT ["/docker-entrypoint.sh"]

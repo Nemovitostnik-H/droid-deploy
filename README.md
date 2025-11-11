@@ -58,6 +58,9 @@ nano .env  # Vyplň VITE_SUPABASE_URL a VITE_SUPABASE_ANON_KEY
 
 # 4. Spusť Docker container
 docker compose up -d
+
+# ✅ Nyní stačí změnit .env a restartovat - není potřeba rebuild!
+# docker compose restart apk-manager-frontend
 ```
 
 ### První přihlášení
@@ -172,8 +175,12 @@ docker compose ps
 # Sledovat logy
 docker compose logs -f apk-manager-frontend
 
-# Restart služby
-docker compose restart
+# Restart služby (aplikuje změny z .env)
+docker compose restart apk-manager-frontend
+
+# Změna ENV proměnných - stačí restart! 🎉
+nano .env  # Uprav VITE_SUPABASE_URL nebo VITE_SUPABASE_ANON_KEY
+docker compose restart apk-manager-frontend  # Žádný rebuild není potřeba!
 
 # Stop služby
 docker compose down
@@ -181,8 +188,9 @@ docker compose down
 # Aktualizace z Git + restart
 git pull && docker compose down && docker compose up -d
 
-# Stáhnout nový Docker image
-docker compose pull
+# Rebuild image (jen pokud se změnil Dockerfile nebo zdrojový kód)
+docker compose build --no-cache apk-manager-frontend
+docker compose up -d
 ```
 
 ## 🔐 Bezpečnost
@@ -226,6 +234,8 @@ docker network inspect supabase_default
 2. Zkontroluj `VITE_SUPABASE_URL` v `.env`
 3. Pro Docker network použij: `VITE_SUPABASE_URL=http://supabase-kong:8000`
 4. Pro localhost použij: `VITE_SUPABASE_URL=http://localhost:8000`
+5. **Restartuj frontend** po změně .env: `docker compose restart apk-manager-frontend`
+6. Zkontroluj že se env-config.js vygeneroval: `docker exec apk-manager-frontend cat /usr/share/nginx/html/env-config.js`
 
 ### Login nefunguje
 
