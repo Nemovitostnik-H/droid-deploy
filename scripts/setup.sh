@@ -81,50 +81,56 @@ echo "   Host (lokální): ${DB_HOST}:${DB_PORT}"
 echo "   Host (docker síť): ${DB_HOST_IN_NETWORK}:${DB_PORT}"
 echo ""
 
-# Aplikace migrations (preferujeme dockerizovaný CLI v síti supabase_default)
+# Aplikace migrations (psql přes Docker síť supabase_default)
 echo "📦 Aplikuji database migrations..."
 echo ""
 
-USE_DOCKER_CLI=0
+USE_DOCKER_PSQL=0
 if command -v docker &>/dev/null && docker network inspect supabase_default >/dev/null 2>&1; then
-  USE_DOCKER_CLI=1
+  USE_DOCKER_PSQL=1
 fi
 
-if [ "$USE_DOCKER_CLI" -eq 1 ]; then
-  echo "🚀 Používám dockerizovaný Supabase CLI v síti 'supabase_default'"
-  DOCKER_CLI_IMAGE="${DOCKER_CLI_IMAGE:-ghcr.io/supabase/cli:latest}"
-  if docker run --rm --network supabase_default -v "$PWD":/workspace -w /workspace "$DOCKER_CLI_IMAGE" db push --db-url "$DOCKER_DB_URL"; then
-    echo "✅ Migrations úspěšně aplikovány (docker CLI)"
+if [ "$USE_DOCKER_PSQL" -eq 1 ]; then
+  echo "🚀 Používám dockerizovaný psql (postgres:15-alpine) v síti 'supabase_default'"
+  if docker run --rm --network supabase_default \
+    -e DBURL="${DOCKER_DB_URL}" \
+    -v "$PWD/migrations":/migrations:ro \
+    postgres:15-alpine sh -c '
+      set -e
+      for f in /migrations/*.sql; do
+        echo "▶ Applying $f"
+        psql "$DBURL" -v ON_ERROR_STOP=1 -f "$f"
+      done
+    ';
+  then
+    echo "✅ Migrations úspěšně aplikovány (docker psql)"
   else
-    echo "⚠️  Docker CLI selhalo – zkusím lokální CLI (pokud je dostupné)"
-    if [ "$HAS_LOCAL_CLI" -eq 1 ]; then
-      if supabase db push --db-url "$DB_URL"; then
-        echo "✅ Migrations úspěšně aplikovány (lokální CLI - fallback)"
-      else
-        echo "❌ Chyba při aplikaci migrations i s lokálním CLI"
-        echo "   Zvaž: 'docker pull ghcr.io/supabase/cli:latest' a ověř síť 'supabase_default'"
-        exit 1
-      fi
+    echo "⚠️  Docker psql selhal – zkusím lokální psql (pokud je dostupné)"
+    if command -v psql &>/dev/null; then
+      set -e
+      for f in migrations/*.sql; do
+        echo "▶ Applying $f"
+        psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+      done
+      echo "✅ Migrations úspěšně aplikovány (lokální psql - fallback)"
     else
-      echo "❌ Chyba při aplikaci migrations (docker CLI) a lokální CLI není k dispozici"
-      echo "   Ověř, že běží Supabase stack, síť 'supabase_default' existuje a image je dostupný:"
-      echo "   docker pull ghcr.io/supabase/cli:latest"
+      echo "❌ Chyba při aplikaci migrations (docker psql) a lokální psql není k dispozici"
+      echo "   Ověř: docker network 'supabase_default' a přístup k DB hostu '${DB_HOST_IN_NETWORK}'"
       exit 1
     fi
   fi
 else
-  if [ "$HAS_LOCAL_CLI" -eq 1 ]; then
-    echo "ℹ️ Používám lokální Supabase CLI"
-    if supabase db push --db-url "$DB_URL"; then
-      echo "✅ Migrations úspěšně aplikovány (lokální CLI)"
-    else
-      echo "❌ Chyba při aplikaci migrations (lokální CLI)"
-      echo "   Zvaž použití Docker: 'docker network ls' a ověř existenci supabase_default"
-      exit 1
-    fi
+  if command -v psql &>/dev/null; then
+    echo "ℹ️ Používám lokální psql"
+    set -e
+    for f in migrations/*.sql; do
+      echo "▶ Applying $f"
+      psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+    done
+    echo "✅ Migrations úspěšně aplikovány (lokální psql)"
   else
-    echo "❌ Supabase CLI není dostupné a docker síť 'supabase_default' nebyla nalezena."
-    echo "   Nainstaluj CLI nebo spusť tento script na stroji, kde běží Docker se sítí 'supabase_default'."
+    echo "❌ psql není dostupné a docker síť 'supabase_default' nebyla nalezena."
+    echo "   Nainstaluj psql nebo spusť tento script na stroji, kde běží Docker se sítí 'supabase_default'."
     exit 1
   fi
 fi
